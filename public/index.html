@@ -191,6 +191,17 @@
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center space-x-2">
                                     <span class="font-bold text-slate-800 text-sm truncate">{{ item.name }}</span>
+                                    
+                                    <!-- 星标喜欢按钮 ⭐ -->
+                                    <button 
+                                        @click.stop="toggleStar(item)"
+                                        class="focus:outline-none transition-transform active:scale-95 duration-150 p-0.5 shrink-0"
+                                        title="设为常用/取消常用"
+                                    >
+                                        <span v-if="item.starred" class="text-amber-400 text-base">★</span>
+                                        <span v-else class="text-slate-300 hover:text-amber-400 text-base transition-colors">☆</span>
+                                    </button>
+
                                     <span v-if="searchQuery" class="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-medium shrink-0">
                                         {{ item._category }}
                                     </span>
@@ -250,6 +261,16 @@
                                     type="text" 
                                     class="border border-indigo-200 rounded px-2 py-1 text-sm font-bold text-slate-800 w-full focus:outline-none focus:ring-1 focus:ring-indigo-500 input-focus-allow"
                                 >
+                                
+                                <!-- 右侧详情页头部星标同步按钮 -->
+                                <button 
+                                    @click="toggleStar(inlineEditForm)"
+                                    class="focus:outline-none transition-transform active:scale-95 duration-150 shrink-0 ml-1"
+                                    title="设为常用/取消常用"
+                                >
+                                    <span v-if="inlineEditForm.starred" class="text-amber-400 text-lg">★</span>
+                                    <span v-else class="text-slate-300 hover:text-amber-400 text-lg transition-colors">☆</span>
+                                </button>
                             </div>
                             
                             <!-- 编辑操作按钮组 -->
@@ -412,11 +433,24 @@
 
     </div>
 
-    <!-- 3. 底部：合并复制栏 -->
+    <!-- 3. 底部：合并复制栏（左侧加入空行勾选框） -->
     <footer class="bg-white border-t border-slate-200 p-4 flex justify-between items-center shrink-0 z-10">
-        <div class="text-sm text-slate-500">
-            已选中 <span class="font-bold text-indigo-600">{{ selectedPrompts.length }}</span> 个提示词
+        <!-- 左侧信息与【空行分隔】勾选选项 -->
+        <div class="flex items-center space-x-6 text-sm text-slate-500">
+            <div>已选中 <span class="font-bold text-indigo-600">{{ selectedPrompts.length }}</span> 个提示词</div>
+            
+            <!-- 【新增功能】空行拼合勾选控制按钮 -->
+            <label class="flex items-center space-x-2 cursor-pointer border-l border-slate-200 pl-6 py-1 select-none" title="启用后，各个卡片的英文提示词拼合时会通过空行上下排版，便于大段落阅读">
+                <input 
+                    type="checkbox" 
+                    v-model="useDoubleNewline"
+                    @change="saveNewlineOption"
+                    class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                >
+                <span class="text-xs text-slate-600 font-semibold">✨ 空行分隔拼合 (段落清晰)</span>
+            </label>
         </div>
+
         <div class="flex space-x-4">
             <button @click="compileAndCopy(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all">
                 ✨ 复制正向提示词 (Positive)
@@ -612,9 +646,9 @@
         </div>
     </div>
 
-    <!-- 【新增】弹窗8：高颜值“正/负提示词冲突检测”提示面板 ⚠️ -->
-    <div v-if="showConflictModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl border border-amber-100 animate-fade-in">
+    <!-- 弹窗8：高颜值“正/负提示词冲突检测”提示面板 -->
+    <div v-if="showConflictModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl border border-amber-100">
             <div class="flex items-center space-x-3 mb-4 text-amber-600">
                 <span class="text-3xl">⚠️</span>
                 <div>
@@ -625,7 +659,6 @@
             
             <div class="bg-slate-50 rounded-xl p-4 mb-5 border border-slate-150 max-h-60 overflow-y-auto scrollbar-thin">
                 <div class="text-xs font-bold text-slate-500 mb-2.5">💥 发生重合冲突的英文词：</div>
-                <!-- 循环渲染冲突列表 -->
                 <div class="flex flex-wrap gap-2">
                     <span 
                         v-for="word in conflictWords" 
@@ -649,6 +682,70 @@
         </div>
     </div>
 
+    <!-- 弹窗9：高品质“导入排重与冲突处理面板” -->
+    <div v-if="showImportDuplicateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl border border-amber-100 animate-fade-in">
+            
+            <div class="flex items-center space-x-3 pb-3 border-b mb-4 shrink-0 text-amber-600">
+                <span class="text-3xl">⚠️</span>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">导入提示：检测到数据重合！</h3>
+                    <p class="text-xs text-slate-500">发现有项目与本地数据库中的提示词【名字】或【内容】存在重复</p>
+                </div>
+            </div>
+
+            <!-- 冲突内容列表滚动区 -->
+            <div class="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 mb-5 scrollbar-thin">
+                <div 
+                    v-for="(item, idx) in importConflictItems" 
+                    :key="idx"
+                    class="p-3 rounded-lg bg-amber-50/50 border border-amber-200 flex flex-col justify-between"
+                >
+                    <div class="flex justify-between items-start">
+                        <span class="text-sm font-bold text-slate-800">{{ item.name }}</span>
+                        <span class="text-[10px] bg-rose-100 text-rose-700 border border-rose-200 font-bold px-2 py-0.5 rounded-full shrink-0">
+                            {{ item.conflictReason }}
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 truncate mt-1.5">
+                        <span class="font-bold text-amber-700">P:</span> {{ item.positive || '无' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制区底栏 -->
+            <div class="pt-3 border-t shrink-0 flex flex-col space-y-3">
+                <div class="text-xs text-slate-500 text-center">
+                    冲突项目：<span class="text-amber-600 font-bold">{{ importConflictItems.length }} 条</span> | 
+                    无冲突安全项：<span class="text-emerald-600 font-bold">{{ importCleanItems.length }} 条</span>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-3">
+                    <button 
+                        @click="abortImportAndReturn" 
+                        class="px-3 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-semibold text-slate-600 transition-colors"
+                    >
+                        ✕ 返回修改
+                    </button>
+                    <button 
+                        @click="executeImportCleanOnly" 
+                        :disabled="importCleanItems.length === 0"
+                        class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow transition-all disabled:opacity-50"
+                    >
+                        🟢 仅导入无冲突项
+                    </button>
+                    <button 
+                        @click="executeImportAllForce" 
+                        class="px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold shadow transition-all"
+                    >
+                        ⚠️ 强行全部导入
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -668,10 +765,13 @@
             const widthList = ref(parseInt(localStorage.getItem('widthList')) || 320);
             const widthSelected = ref(parseInt(localStorage.getItem('widthSelected')) || 320);
 
+            // 【新增】空行拼合配置状态（优先从本地存储恢复偏好）
+            const useDoubleNewline = ref(localStorage.getItem('useDoubleNewline') === 'true');
+
             // 主从关联状态
             const selectedActiveId = ref(null);      
             const isInlineEditing = ref(false);       
-            const inlineEditForm = ref({ id: '', name: '', positive: '', negative: '', desc: '', _category: '' }); 
+            const inlineEditForm = ref({ id: '', name: '', positive: '', negative: '', desc: '', starred: false, _category: '' }); 
 
             // Toast 状态
             const toast = ref({ show: false, title: '', message: '' });
@@ -683,6 +783,11 @@
             // 批量导入
             const showBulkImportModal = ref(false);
             const bulkImportText = ref('');
+
+            // 排重确认模态框状态
+            const showImportDuplicateModal = ref(false);
+            const importConflictItems = ref([]); 
+            const importCleanItems = ref([]);    
 
             // 创建分类
             const showCategoryModal = ref(false);
@@ -706,7 +811,7 @@
             const showSwitchConfirm = ref(false);
             const pendingSwitchItem = ref(null);
 
-            // 【新增】提示词正负冲突弹窗状态
+            // 提示词正负冲突弹窗状态
             const showConflictModal = ref(false);
             const conflictWords = ref([]);
 
@@ -719,6 +824,12 @@
                 toast.value.message = message;
                 toast.value.show = true;
                 setTimeout(() => { toast.value.show = false; }, 2500);
+            };
+
+            // 【新增】：空行拼合状态切换保存
+            const saveNewlineOption = () => {
+                localStorage.setItem('useDoubleNewline', useDoubleNewline.value);
+                triggerToast(useDoubleNewline.value ? '✨ 已开启段落排版' : '⚡ 已恢复单行流排版', '点击复制按钮体验新排版样式');
             };
 
             // 弹性拉伸控制
@@ -783,23 +894,25 @@
                 return successful;
             };
 
-            // 计算属性：左侧过滤展现卡片
+            // 计算属性：左侧过滤展现卡片，星标置顶
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
+                let baseResults = [];
+                
                 if (!query) {
                     const found = dbData.value.find(item => item.category === currentCategory.value);
-                    return found ? found.prompts.map(p => ({ ...p, _category: currentCategory.value })) : [];
+                    baseResults = found ? found.prompts.map(p => ({ ...p, _category: currentCategory.value })) : [];
                 } else {
-                    let results = [];
                     for (const catItem of dbData.value) {
                         for (const promptItem of catItem.prompts) {
                             if (promptItem.name.toLowerCase().includes(query)) {
-                                results.push({ ...promptItem, _category: catItem.category });
+                                baseResults.push({ ...promptItem, _category: catItem.category });
                             }
                         }
                     }
-                    return results;
                 }
+                
+                return [...baseResults].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
             });
 
             // 智能解析批量文本
@@ -855,7 +968,8 @@
                             name: finalName,
                             positive: finalPositive,
                             negative: "",
-                            desc: finalDesc
+                            desc: finalDesc,
+                            starred: false 
                         });
                     } else {
                         englishBuffer.push(line);
@@ -869,7 +983,8 @@
                         name: combined.split(',')[0].slice(0, 25) || "未命名导入",
                         positive: combined,
                         negative: "",
-                        desc: "💡 批量导入（未提供手账说明）"
+                        desc: "💡 批量导入（未提供手账说明）",
+                        starred: false
                     });
                 }
 
@@ -885,29 +1000,90 @@
                 showBulkImportModal.value = true;
             };
 
-            const executeBulkImport = async () => {
+            // 批量导入拦截并校验重复
+            const executeBulkImport = () => {
                 const parsedList = parseBulkText(bulkImportText.value);
                 if (parsedList.length === 0) return;
 
-                const targetCat = dbData.value.find(item => item.category === currentCategory.value);
-                if (!targetCat) return;
+                const existingNames = [];
+                const existingPositives = [];
 
-                targetCat.prompts.push(...parsedList);
-                
-                showBulkImportModal.value = false;
-                bulkImportText.value = '';
-                await updateBackend();
+                dbData.value.forEach(cat => {
+                    cat.prompts.forEach(p => {
+                        existingNames.push(p.name.trim().toLowerCase());
+                        if (p.positive) {
+                            const cleaned = p.positive.trim().toLowerCase().replace(/[\s()\[\]{}]/g, '').replace(/:[0-9.]+/g, '');
+                            existingPositives.push(cleaned);
+                        }
+                    });
+                });
 
-                if (parsedList.length > 0) {
-                    selectedActiveId.value = parsedList[0].id;
-                    inlineEditForm.value = { ...parsedList[0], _category: currentCategory.value };
-                    isInlineEditing.value = false;
+                const conflicts = [];
+                const cleans = [];
+
+                parsedList.forEach(item => {
+                    const itemNameClean = item.name.trim().toLowerCase();
+                    const itemPosClean = item.positive.trim().toLowerCase().replace(/[\s()\[\]{}]/g, '').replace(/:[0-9.]+/g, '');
+
+                    const isNameDup = existingNames.includes(itemNameClean);
+                    const isPosDup = itemPosClean ? existingPositives.includes(itemPosClean) : false;
+
+                    if (isNameDup || isPosDup) {
+                        let reason = "";
+                        if (isNameDup && isPosDup) reason = "名字 & 内容 均重复";
+                        else if (isNameDup) reason = "名字已存在";
+                        else if (isPosDup) reason = "提示词内容已存在";
+
+                        conflicts.push({
+                            ...item,
+                            conflictReason: reason
+                        });
+                    } else {
+                        cleans.push(item);
+                    }
+                });
+
+                if (conflicts.length > 0) {
+                    importConflictItems.value = conflicts;
+                    importCleanItems.value = cleans;
+                    showBulkImportModal.value = false; 
+                    showImportDuplicateModal.value = true; 
+                } else {
+                    performImport(parsedList);
                 }
-
-                triggerToast('批量导入成功', `成功向分类【${currentCategory.value}】中导入了 ${parsedList.length} 个提示词！`);
             };
 
-            // 无阻塞自建弹窗切换提示词
+            const performImport = async (list) => {
+                const targetCat = dbData.value.find(item => item.category === currentCategory.value);
+                if (!targetCat || list.length === 0) return;
+
+                targetCat.prompts.push(...list);
+                await updateBackend();
+
+                selectedActiveId.value = list[0].id;
+                inlineEditForm.value = { ...list[0], _category: currentCategory.value };
+                isInlineEditing.value = false;
+
+                triggerToast('导入成功', `已导入 ${list.length} 个提示词到【${currentCategory.value}】`);
+            };
+
+            const executeImportCleanOnly = () => {
+                performImport(importCleanItems.value);
+                showImportDuplicateModal.value = false;
+            };
+
+            const executeImportAllForce = () => {
+                const combined = [...importCleanItems.value, ...importConflictItems.value];
+                performImport(combined);
+                showImportDuplicateModal.value = false;
+            };
+
+            const abortImportAndReturn = () => {
+                showImportDuplicateModal.value = false;
+                showBulkImportModal.value = true; 
+            };
+
+            // 无阻断自建弹窗切换提示词
             const inspectPrompt = (item) => {
                 if (isInlineEditing.value && selectedActiveId.value !== item.id) {
                     pendingSwitchItem.value = item;
@@ -939,11 +1115,9 @@
 
             const selectCategory = (categoryName) => {
                 if (isInlineEditing.value) {
-                    // 如果正在编辑，则不能随意切分类，除非用户明确确认放弃
-                    pendingSwitchItem.value = { id: null }; // 标记特殊状态以在后面切换分类
+                    pendingSwitchItem.value = { id: null }; 
                     showSwitchConfirm.value = true;
                     
-                    // 定义确认后的硬切换分类回调
                     confirmSwitchForCategory = () => {
                         searchQuery.value = '';
                         currentCategory.value = categoryName;
@@ -1015,43 +1189,43 @@
             };
 
             const saveRenameCategory = async () => {
-                const newName = renameCategoryName.value.trim();
+                const name = renameCategoryName.value.trim();
                 const oldName = oldCategoryName.value;
-                if (!newName) {
+                if (!name) {
                     triggerToast('修改失败', '❌ 分类名称不能为空！');
                     return;
                 }
-                if (newName === oldName) {
+                if (name === oldName) {
                     showRenameCategoryModal.value = false;
                     return;
                 }
-                if (dbData.value.some(item => item.category === newName)) {
+                if (dbData.value.some(item => item.category === name)) {
                     triggerToast('修改失败', '❌ 该新名字分类已存在！');
                     return;
                 }
 
                 const found = dbData.value.find(item => item.category === oldName);
                 if (found) {
-                    found.category = newName;
+                    found.category = name;
                 }
 
                 selectedPrompts.value.forEach(p => {
                     if (p.category === oldName) {
-                        p.category = newName;
+                        p.category = name;
                     }
                 });
 
                 if (currentCategory.value === oldName) {
-                    currentCategory.value = newName;
+                    currentCategory.value = name;
                 }
 
                 if (inlineEditForm.value._category === oldName) {
-                    inlineEditForm.value._category = newName;
+                    inlineEditForm.value._category = name;
                 }
 
                 showRenameCategoryModal.value = false;
                 await updateBackend();
-                triggerToast('重命名成功', `已将分类【${oldName}】改名为【${newName}】`);
+                triggerToast('重命名成功', `已将分类【${oldName}】改名为【${name}】`);
             };
 
             // 删除分类确认
@@ -1114,7 +1288,7 @@
 
             // 添加提示词弹窗
             const openAddPromptModal = () => {
-                tempPrompt.value = { name: '', positive: '', negative: '', desc: '' };
+                tempPrompt.value = { name: '', positive: '', negative: '', desc: '', starred: false };
                 showPromptModal.value = true;
             };
 
@@ -1156,6 +1330,7 @@
                     targetCat.prompts[idx].positive = inlineEditForm.value.positive;
                     targetCat.prompts[idx].negative = inlineEditForm.value.negative;
                     targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
+                    targetCat.prompts[idx].starred = inlineEditForm.value.starred; 
                 }
 
                 const sIdx = selectedPrompts.value.findIndex(p => p.id === inlineEditForm.value.id);
@@ -1164,6 +1339,7 @@
                     selectedPrompts.value[sIdx].positive = inlineEditForm.value.positive;
                     selectedPrompts.value[sIdx].negative = inlineEditForm.value.negative;
                     selectedPrompts.value[sIdx].desc = inlineEditForm.value.desc;
+                    selectedPrompts.value[sIdx].starred = inlineEditForm.value.starred;
                 }
 
                 isInlineEditing.value = false;
@@ -1188,6 +1364,7 @@
                 showDeletePromptConfirm.value = true;
             };
 
+            // 执行删除提示词
             const executeDeletePrompt = async () => {
                 const item = promptToDelete.value;
                 if (!item) return;
@@ -1196,7 +1373,7 @@
                 const targetCat = dbData.value.find(c => c.category === catName);
                 if (targetCat) {
                     targetCat.prompts = targetCat.prompts.filter(p => p.id !== item.id);
-                    selectedPrompts.value = selectedPrompts.value.filter(p => p.id !== item.id);
+                    selectedPrompts.value = selectedPrompts.value.filter(p => !targetCat.prompts.some(p_ex => p_ex.id === p.id));
 
                     if (selectedActiveId.value === item.id) {
                         selectedActiveId.value = null;
@@ -1206,6 +1383,30 @@
                     showDeletePromptConfirm.value = false; 
                     await updateBackend();
                     triggerToast('提示词已删除', `已从【${catName}】中移除`);
+                }
+            };
+
+            // 星标喜欢⭐
+            const toggleStar = async (item) => {
+                const catName = item._category || currentCategory.value;
+                const targetCat = dbData.value.find(c => c.category === catName);
+                if (targetCat) {
+                    const found = targetCat.prompts.find(p => p.id === item.id);
+                    if (found) {
+                        found.starred = !found.starred;
+                        
+                        if (selectedActiveId.value === item.id) {
+                            inlineEditForm.value.starred = found.starred;
+                        }
+                        
+                        const sIdx = selectedPrompts.value.findIndex(p => p.id === item.id);
+                        if (sIdx !== -1) {
+                            selectedPrompts.value[sIdx].starred = found.starred;
+                        }
+                        
+                        await updateBackend();
+                        triggerToast(found.starred ? '⭐ 已标为常用(置顶)' : '☆ 已取消常用', `【${item.name}】`);
+                    }
                 }
             };
 
@@ -1229,64 +1430,61 @@
                 triggerToast('已清空', '已取消勾选所有提示词');
             };
 
-            // 【新增核心功能】：正负向提示词冲突静默检测与比对
+            // 正负向提示词冲突静默检测
             const checkConflictAndWarn = () => {
-                // 1. 获取所有已选项目的正向与反向文本
                 const posRaw = sortedSelectedPrompts.value.map(item => item.positive).filter(Boolean).join(', ');
                 const negRaw = sortedSelectedPrompts.value.map(item => item.negative).filter(Boolean).join(', ');
 
                 if (!posRaw || !negRaw) return false;
 
-                // 2. 深度清洗函数（剥离权重如 :1.5, 去除各种中括号小括号花括号，转换为小写，去掉空格）
                 const cleanWord = (word) => {
                     return word
-                        .replace(/:[0-9.]+/g, '') // 去除权重如 :1.2
-                        .replace(/[()\[\]{}]/g, '') // 去除括号 ( ) [ ] { }
+                        .replace(/:[0-9.]+/g, '') 
+                        .replace(/[()\[\]{}]/g, '') 
                         .trim()
                         .toLowerCase();
                 };
 
-                // 3. 数组切分，做小写去空格清洗
                 const posSet = posRaw.split(',').map(cleanWord).filter(w => w.length > 0);
                 const negSet = negRaw.split(',').map(cleanWord).filter(w => w.length > 0);
 
-                // 4. 求相交的部分 (大小写忽略，权重忽略)
                 const conflicts = [...new Set(posSet.filter(w => negSet.includes(w)))];
 
                 if (conflicts.length > 0) {
                     conflictWords.value = conflicts;
-                    showConflictModal.value = true; // 唤醒精美无阻塞警告卡片
+                    showConflictModal.value = true; 
                     return true;
                 }
                 return false;
             };
 
-            // 拼合复制
+            // 拼合复制（已添加空行换行拼合控制逻辑）
             const compileAndCopy = (isPositive = true) => {
                 if (sortedSelectedPrompts.value.length === 0) {
                     triggerToast('复制失败', '❌ 请先勾选需要拼合的提示词卡片！');
                     return;
                 }
 
+                // 【核心变动】：根据 useDoubleNewline 的状态，动态决定拼接符
+                const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
+
                 const result = sortedSelectedPrompts.value
                     .map(item => isPositive ? item.positive : item.negative)
                     .filter(text => text && text.trim() !== "")
-                    .join(', ');
+                    .join(joinSeparator);
 
                 if (!result) {
                     triggerToast('未复制任何内容', `选中的卡片中没有 ${isPositive ? '正向' : '反向'} 提示词`);
                     return;
                 }
 
-                // 复制到剪切板
                 copyToClipboard(result).then(() => {
                     const typeText = isPositive ? '正向' : '反向';
                     triggerToast(`复制${typeText}提示词成功`, result);
                     
-                    // 【关键触发】：成功复制后，后台立刻静默开展正负提示词冲突检测
                     setTimeout(() => {
                         checkConflictAndWarn();
-                    }, 350); // 延时350ms唤醒，优化视觉体验
+                    }, 350); 
                 }).catch(err => {
                     triggerToast('复制失败', '请手动选中进行复制');
                 });
@@ -1303,6 +1501,7 @@
                 widthCategory,
                 widthList,
                 widthSelected,
+                useDoubleNewline,
                 selectedActiveId,
                 isInlineEditing,
                 inlineEditForm,
@@ -1327,16 +1526,17 @@
                 pendingSwitchItem,
                 showConflictModal,
                 conflictWords,
+                showImportDuplicateModal,
+                importConflictItems,
+                importCleanItems,
                 draggedIndex,
                 displayedPrompts,
                 initResize,
                 inspectPrompt,
                 confirmSwitch: () => {
-                    // 如果是普通提示词切换
                     if (pendingSwitchItem.value && pendingSwitchItem.value.id !== null) {
                         confirmSwitch();
                     } else {
-                        // 如果是跨分类重定向硬切换
                         confirmSwitchForCategory();
                     }
                 },
@@ -1357,12 +1557,17 @@
                 cancelInlineEdit,
                 triggerDeletePrompt,
                 executeDeletePrompt,
+                toggleStar,
                 toggleSelect,
                 isPromptSelected,
                 clearAllSelected,
                 compileAndCopy,
                 openBulkImportModal,
-                executeBulkImport
+                executeBulkImport,
+                executeImportCleanOnly,
+                executeImportAllForce,
+                abortImportAndReturn,
+                saveNewlineOption
             };
         }
     }).mount('#app');
