@@ -1,0 +1,47 @@
+[
+    {
+        "category": "人物",
+        "prompts": [
+            {
+                "name": "C.C.",
+                "positive": "C.C.(CODE GEASS) ",
+                "negative": "",
+                "id": 1780479542775
+            },
+            {
+                "name": "V.V.",
+                "positive": "",
+                "negative": "",
+                "id": 1780481126263
+            }
+        ]
+    },
+    {
+        "category": "表情",
+        "prompts": [
+            {
+                "id": 1,
+                "name": "温柔微笑",
+                "positive": "smiling, gentle smile",
+                "negative": "",
+                "_category": "表情"
+            },
+            {
+                "name": "sex",
+                "positive": "",
+                "negative": "",
+                "id": 1780481157023
+            },
+            {
+                "id": 1780481937799,
+                "name": "sex",
+                "positive": "",
+                "negative": ""
+            }
+        ]
+    },
+    {
+        "category": "衣着",
+        "prompts": []
+    }
+]

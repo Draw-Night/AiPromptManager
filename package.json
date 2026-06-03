@@ -1,0 +1,15 @@
+{
+  "name": "ai-prompt-manager",
+  "version": "1.0.0",
+  "description": "AI 绘画提示词桌面管理工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "electron": "^30.0.1"
+  }
+}
