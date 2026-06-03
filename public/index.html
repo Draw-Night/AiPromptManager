@@ -75,7 +75,7 @@
                     @dragover.prevent="handleDragOver(index, $event)"
                     @dragend="handleDragEnd"
                     :class="['group w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex justify-between items-center cursor-grab active:cursor-grabbing border border-transparent', 
-                             (currentCategory === catItem.category && !searchQuery) ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'text-slate-600 hover:bg-slate-100',
+                             (currentCategory === catItem.category) ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'text-slate-600 hover:bg-slate-100',
                              draggedIndex === index ? 'dragging' : '']"
                     @click="selectCategory(catItem.category)"
                 >
@@ -121,8 +121,10 @@
             <!-- 头部操作栏 -->
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5 shrink-0">
                 <div class="flex items-center space-x-4">
+                    <!-- 【修改】：保持分类标题，搜索时只显示 (筛选中) -->
                     <h2 class="text-2xl font-bold text-slate-800">
-                        {{ searchQuery ? '搜索结果' : currentCategory }}
+                        {{ currentCategory }} 
+                        <span v-if="searchQuery" class="text-sm font-normal text-indigo-500 bg-indigo-50 px-2 py-1 rounded ml-1.5">(筛选中)</span>
                     </h2>
                     
                     <!-- 搜索框 -->
@@ -131,8 +133,8 @@
                         <input 
                             v-model="searchQuery" 
                             type="text" 
-                            placeholder="输入提示词名称检索..." 
-                            class="w-full border border-slate-200 rounded-lg pl-9 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm transition-all input-focus-allow"
+                            placeholder="在此分类下搜索..." 
+                            class="w-full border border-slate-200 rounded-lg pl-9 pr-8 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm transition-all input-focus-allow"
                         >
                         <button 
                             v-if="searchQuery" 
@@ -147,14 +149,14 @@
                 <!-- 操作按钮组 -->
                 <div class="flex space-x-2 shrink-0">
                     <button 
-                        v-if="!searchQuery && dbData.length > 0"
+                        v-if="dbData.length > 0"
                         @click="openBulkImportModal" 
                         class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-250 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-all flex items-center space-x-1"
                     >
                         <span>📥 批量导入</span>
                     </button>
                     <button 
-                        v-if="!searchQuery && dbData.length > 0"
+                        v-if="dbData.length > 0"
                         @click="openAddPromptModal" 
                         class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition-all"
                     >
@@ -192,7 +194,7 @@
                                 <div class="flex items-center space-x-2">
                                     <span class="font-bold text-slate-800 text-sm truncate">{{ item.name }}</span>
                                     
-                                    <!-- 星标喜欢按钮 ⭐ -->
+                                    <!-- 星标收藏按钮 ⭐ -->
                                     <button 
                                         @click.stop="toggleStar(item)"
                                         class="focus:outline-none transition-transform active:scale-95 duration-150 p-0.5 shrink-0"
@@ -201,10 +203,6 @@
                                         <span v-if="item.starred" class="text-amber-400 text-base">★</span>
                                         <span v-else class="text-slate-300 hover:text-amber-400 text-base transition-colors">☆</span>
                                     </button>
-
-                                    <span v-if="searchQuery" class="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-medium shrink-0">
-                                        {{ item._category }}
-                                    </span>
                                 </div>
                                 
                                 <!-- 手账中文说明预览 -->
@@ -225,9 +223,9 @@
                         </button>
                     </div>
 
-                    <div v-if="displayedPrompts.length === 0" class="py-16 text-center text-slate-300">
-                        <span class="text-4xl block mb-2">📥</span>
-                        <p class="text-xs">该分类下暂无提示词</p>
+                    <div v-if="displayedPrompts.length === 0" class="py-16 text-center text-slate-300 w-full">
+                        <span class="text-4xl block mb-2">🔍</span>
+                        <p class="text-xs">未找到任何匹配的提示词</p>
                     </div>
                 </div>
 
@@ -374,14 +372,14 @@
             class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
         ></div>
 
-        <!-- 【板块 4】：右侧栏（已选清单与常用预设双Tabs工作流） -->
+        <!-- 【板块 4】：右侧栏 -->
         <aside 
             :style="{ width: widthSelected + 'px' }" 
             class="bg-white p-4 flex flex-col justify-between shrink-0 h-full overflow-hidden"
         >
             <div class="flex flex-col h-full overflow-hidden">
                 
-                <!-- 【新增核心】右侧双 Tab 页切换头部 -->
+                <!-- Tab 页切换头部 -->
                 <div class="flex border-b border-slate-100 mb-3 shrink-0">
                     <button 
                         @click="rightTab = 'selected'"
@@ -447,7 +445,7 @@
                         </div>
                     </div>
 
-                    <!-- 【新增核心】保存为新组合按钮 -->
+                    <!-- 保存为新组合按钮 -->
                     <div v-if="selectedPrompts.length > 0" class="pt-3 border-t shrink-0">
                         <button 
                             @click="openSavePresetModal"
@@ -483,33 +481,32 @@
                                         {{ preset.promptIds.length }} 个提示词
                                     </span>
                                 </div>
-                                <!-- 词组内容预览 -->
                                 <p class="text-[10px] text-slate-400 truncate mt-1 leading-relaxed" :title="getPresetNamesPreview(preset)">
                                     包含: {{ getPresetNamesPreview(preset) }}
                                 </p>
                             </div>
 
-                            <!-- 预设卡片底栏功能按钮（⚡应用 ➕追加 ✕删除） -->
+                            <!-- 预设卡片底栏功能按钮 -->
                             <div class="flex justify-between items-center pt-2 mt-2 border-t border-amber-200/50">
                                 <div class="flex space-x-2">
                                     <button 
                                         @click="applyPreset(preset, false)"
                                         class="text-[11px] bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded shadow-sm transition-all"
-                                        title="清空当前勾选，直接应用此组合"
+                                        title="直接应用此组合"
                                     >
                                         ⚡ 应用
                                     </button>
                                     <button 
                                         @click="applyPreset(preset, true)"
                                         class="text-[11px] bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold px-2.5 py-1 rounded transition-all"
-                                        title="保留当前已有勾选，并将此预设合并勾选进来"
+                                        title="追加此组合"
                                     >
                                         ➕ 追加
                                     </button>
                                 </div>
                                 
                                 <button 
-                                    @click="deletePreset(preset)"
+                                    @click.stop="triggerDeletePreset(preset)"
                                     class="text-xs text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
                                     title="删除此常用组合"
                                 >
@@ -585,8 +582,8 @@
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showPromptModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="saveNewPrompt" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium">保存并查看</button>
+                <button @click="showPromptModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
+                <button @click="saveNewPrompt" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium font-bold">保存并查看</button>
             </div>
         </div>
     </div>
@@ -609,8 +606,8 @@
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="saveCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium">确认创建</button>
+                <button @click="showCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold font-bold">取消</button>
+                <button @click="saveCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium font-bold font-bold">确认创建</button>
             </div>
         </div>
     </div>
@@ -694,7 +691,7 @@
                 删除后，该分类下所有提示词将永久丢失。该操作无法撤销！
             </p>
             <div class="flex justify-end space-x-3">
-                <button @click="showDeleteCategoryConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="showDeleteCategoryConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
                 <button @click="executeDeleteCategory" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow font-bold">确认永久删除</button>
             </div>
         </div>
@@ -711,7 +708,7 @@
                 确定要从数据库中删除提示词 <span class="font-bold text-slate-900">【{{ promptToDelete?.name }}】</span> 吗？
             </p>
             <div class="flex justify-end space-x-3">
-                <button @click="showDeletePromptConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="showDeletePromptConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
                 <button @click="executeDeletePrompt" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow font-bold">删除</button>
             </div>
         </div>
@@ -729,8 +726,8 @@
                 确定要放弃当前修改并强行切换吗？
             </p>
             <div class="flex justify-end space-x-3">
-                <button @click="cancelSwitch" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">继续编辑</button>
-                <button @click="confirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 shadow font-bold">放弃修改并切换</button>
+                <button @click="cancelSwitch" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">继续编辑</button>
+                <button @click="handleConfirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 shadow font-bold">放弃修改并切换</button>
             </div>
         </div>
     </div>
@@ -763,7 +760,7 @@
                 <span class="text-[11px] text-slate-400">💡 提示：双击上面词条可快速手动复制</span>
                 <button 
                     @click="showConflictModal = false" 
-                    class="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 shadow"
+                    class="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 shadow font-bold"
                 >
                     我知道了
                 </button>
@@ -835,7 +832,7 @@
         </div>
     </div>
 
-    <!-- 【新增】弹窗10：保存为常用预设组合模态框 💾 -->
+    <!-- 弹窗10：保存为常用预设组合模态框 💾 -->
     <div v-if="showSavePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in border border-indigo-100">
             <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1.5">
@@ -861,6 +858,80 @@
         </div>
     </div>
 
+    <!-- 弹窗11：确认删除预设组合弹窗 ✕ -->
+    <div v-if="showDeletePresetConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-rose-100">
+            <div class="flex items-center space-x-3 mb-3 text-rose-600">
+                <span class="text-2xl">🗑️</span>
+                <h3 class="text-lg font-bold">确定要删除该常用组合吗？</h3>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                确定要删除常用组合 <span class="font-bold text-slate-900">【{{ presetToDelete?.name }}】</span> 吗？删除后无法恢复！
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button @click="showDeletePresetConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
+                <button @click="executeDeletePreset" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 shadow font-bold">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗12：高颜值“提示词权重去重对比报告” 📊 -->
+    <div v-if="showDupMergeModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl border border-indigo-100">
+            
+            <div class="flex items-center space-x-3 pb-3 border-b mb-4 shrink-0 text-indigo-600">
+                <span class="text-3xl">📊</span>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">复制成功！已自动完成权重排重</h3>
+                    <p class="text-xs text-slate-400">检测到并行的多项冲突词，系统已自动保留了[权重最大]的唯一项</p>
+                </div>
+            </div>
+
+            <!-- 去重对比列表 -->
+            <div class="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 mb-5 scrollbar-thin">
+                <div 
+                    v-for="conflict in dupMergeConflicts" 
+                    :key="conflict.word"
+                    class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col space-y-2.5 hover:border-indigo-300 transition-all"
+                >
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-extrabold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md uppercase tracking-wider font-mono">
+                            {{ conflict.word }}
+                        </span>
+                        <span class="text-[10px] text-slate-400">合并了 {{ conflict.items.length }} 处重复</span>
+                    </div>
+
+                    <!-- 具体的去重对比链条 -->
+                    <div class="space-y-1.5 pl-1">
+                        <div 
+                            v-for="item in conflict.items" 
+                            :key="item.original"
+                            class="flex items-center justify-between text-xs"
+                        >
+                            <span :class="['font-mono', item.isWinner ? 'text-emerald-600 font-bold' : 'text-slate-400 line-through']">
+                                {{ item.original }}
+                            </span>
+                            <span :class="['text-[10px] font-bold px-1.5 py-0.2 rounded shrink-0', item.isWinner ? 'bg-emerald-50 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-400']">
+                                权重: {{ item.weight.toFixed(2) }} {{ item.isWinner ? '★ 保留' : '已丢弃' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center shrink-0 pt-2">
+                <span class="text-[11px] text-slate-400">💡 提示：精简后的标准英文已成功写入剪贴板</span>
+                <button 
+                    @click="showDupMergeModal = false" 
+                    class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md font-bold"
+                >
+                    好的，继续作画
+                </button>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -883,8 +954,8 @@
             // 空行拼合配置状态
             const useDoubleNewline = ref(localStorage.getItem('useDoubleNewline') === 'true');
 
-            // 【新增】常用组合数据持久化逻辑（在 LocalStorage 安全保存）
-            const rightTab = ref('selected'); // 'selected' (已选清单) 或 'presets' (常用预设)
+            // 常用组合数据持久化逻辑
+            const rightTab = ref('selected'); 
             const presets = ref(JSON.parse(localStorage.getItem('promptPresets') || '[]'));
             const showSavePresetModal = ref(false);
             const newPresetName = ref('');
@@ -936,6 +1007,14 @@
             // 提示词正负冲突弹窗状态
             const showConflictModal = ref(false);
             const conflictWords = ref([]);
+
+            // 删除预设常用组合弹窗状态
+            const showDeletePresetConfirm = ref(false);
+            const presetToDelete = ref(null);
+
+            // 提示词复制去重对比报告模态框状态
+            const showDupMergeModal = ref(false);
+            const dupMergeConflicts = ref([]); 
 
             // 拖拽
             const draggedIndex = ref(null);
@@ -997,28 +1076,51 @@
                 document.addEventListener('mouseup', stopDrag);
             };
 
-            // 计算属性：左侧过滤展现卡片，星标置顶
+            // 勾选状态识别
+            const isPromptSelected = (item) => {
+                return selectedPrompts.value.some(p => p.id === item.id);
+            };
+
+            // 【彻底重构】：将全局搜索修改为“分类内局部搜索”，彻底杜绝动作栏在人名搜索下乱入的 Bug
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
+                
+                // 1. 强制提取“当前分类”下的提示词，将其作为检索数据源
+                const found = dbData.value.find(item => item.category === currentCategory.value);
+                const currentPrompts = found ? found.prompts.map(p => ({ ...p, _category: currentCategory.value })) : [];
+
                 let baseResults = [];
                 
                 if (!query) {
-                    const found = dbData.value.find(item => item.category === currentCategory.value);
-                    baseResults = found ? found.prompts.map(p => ({ ...p, _category: currentCategory.value })) : [];
+                    // 无搜索：显示当前分类所有词
+                    baseResults = currentPrompts;
                 } else {
-                    for (const catItem of dbData.value) {
-                        for (const promptItem of catItem.prompts) {
-                            if (promptItem.name.toLowerCase().includes(query)) {
-                                baseResults.push({ ...promptItem, _category: catItem.category });
-                            }
-                        }
-                    }
+                    // 局部搜索：仅在当前分类的词组下检索名称、正向、反向及手账
+                    baseResults = currentPrompts.filter(promptItem => {
+                        return (
+                            promptItem.name.toLowerCase().includes(query) || 
+                            (promptItem.positive && promptItem.positive.toLowerCase().includes(query)) ||
+                            (promptItem.negative && promptItem.negative.toLowerCase().includes(query)) ||
+                            (promptItem.desc && promptItem.desc.toLowerCase().includes(query))
+                        );
+                    });
                 }
                 
-                return [...baseResults].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+                // 2. 局部检索完毕后，进行三级高精置顶排布
+                return [...baseResults].sort((a, b) => {
+                    const aSel = isPromptSelected(a) ? 1 : 0;
+                    const bSel = isPromptSelected(b) ? 1 : 0;
+                    if (aSel !== bSel) return bSel - aSel; 
+
+                    const aStar = a.starred ? 1 : 0;
+                    const bStar = b.starred ? 1 : 0;
+                    if (aStar !== bStar) return bStar - aStar; 
+
+                    return 0;
+                });
             });
 
-            // 智能解析批量文本并实施全角自动修正
+            // 智能解析批量文本
             const parseBulkText = (text) => {
                 if (!text.trim()) return [];
                 const lines = text.split(/\r?\n/);
@@ -1103,7 +1205,6 @@
                 showBulkImportModal.value = true;
             };
 
-            // 批量导入拦截并校验重复
             const executeBulkImport = () => {
                 const parsedList = parseBulkText(bulkImportText.value);
                 if (parsedList.length === 0) return;
@@ -1137,10 +1238,7 @@
                         else if (isNameDup) reason = "名字已存在";
                         else if (isPosDup) reason = "提示词内容已存在";
 
-                        conflicts.push({
-                            ...item,
-                            conflictReason: reason
-                        });
+                        conflicts.push({ ...item, conflictReason: reason });
                     } else {
                         cleans.push(item);
                     }
@@ -1186,7 +1284,7 @@
                 showBulkImportModal.value = true; 
             };
 
-            // 无阻断自建弹窗切换提示词
+            // 无阻断自建弹窗切换提示词核心
             const inspectPrompt = (item) => {
                 if (isInlineEditing.value && selectedActiveId.value !== item.id) {
                     pendingSwitchItem.value = item;
@@ -1199,16 +1297,23 @@
                 inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
             };
 
-            const confirmSwitch = () => {
+            // 避开同名和未声明引用报错
+            const handleConfirmSwitch = () => {
                 if (pendingSwitchItem.value) {
                     const item = pendingSwitchItem.value;
-                    selectedActiveId.value = item.id;
-                    inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
+                    if (item.id === null && item._categoryTarget) {
+                        searchQuery.value = '';
+                        currentCategory.value = item._categoryTarget;
+                        selectedActiveId.value = null;
+                    } else {
+                        selectedActiveId.value = item.id;
+                        inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
+                    }
                 }
                 isInlineEditing.value = false; 
                 showSwitchConfirm.value = false;
                 pendingSwitchItem.value = null;
-                triggerToast('已切换提示词', '放弃了上一个未保存的修改');
+                triggerToast('已切换', '放弃了未保存的修改');
             };
 
             const cancelSwitch = () => {
@@ -1218,16 +1323,8 @@
 
             const selectCategory = (categoryName) => {
                 if (isInlineEditing.value) {
-                    pendingSwitchItem.value = { id: null }; 
+                    pendingSwitchItem.value = { id: null, _categoryTarget: categoryName }; 
                     showSwitchConfirm.value = true;
-                    
-                    confirmSwitchForCategory = () => {
-                        searchQuery.value = '';
-                        currentCategory.value = categoryName;
-                        selectedActiveId.value = null;
-                        isInlineEditing.value = false;
-                        showSwitchConfirm.value = false;
-                    };
                     return;
                 }
                 searchQuery.value = '';
@@ -1235,8 +1332,6 @@
                 selectedActiveId.value = null; 
                 isInlineEditing.value = false;
             };
-
-            let confirmSwitchForCategory = () => {};
 
             // 数据加载与保存
             const loadData = async () => {
@@ -1308,23 +1403,14 @@
                 }
 
                 const found = dbData.value.find(item => item.category === oldName);
-                if (found) {
-                    found.category = name;
-                }
+                if (found) found.category = name;
 
                 selectedPrompts.value.forEach(p => {
-                    if (p.category === oldName) {
-                        p.category = name;
-                    }
+                    if (p.category === oldName) p.category = name;
                 });
 
-                if (currentCategory.value === oldName) {
-                    currentCategory.value = name;
-                }
-
-                if (inlineEditForm.value._category === oldName) {
-                    inlineEditForm.value._category = name;
-                }
+                if (currentCategory.value === oldName) currentCategory.value = name;
+                if (inlineEditForm.value._category === oldName) inlineEditForm.value._category = name;
 
                 showRenameCategoryModal.value = false;
                 await updateBackend();
@@ -1409,7 +1495,8 @@
                     name: tempPrompt.value.name.trim(),
                     positive: sanitizePrompts(tempPrompt.value.positive), 
                     negative: sanitizePrompts(tempPrompt.value.negative),
-                    desc: tempPrompt.value.desc.trim()
+                    desc: tempPrompt.value.desc.trim(),
+                    starred: false
                 };
                 targetCat.prompts.push(newObj);
                 
@@ -1434,7 +1521,6 @@
                 if (!targetCat) return;
 
                 let idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
-                
                 if (idx === -1) {
                     idx = targetCat.prompts.findIndex(p => p.name === inlineEditForm.value.name);
                     if (idx !== -1) {
@@ -1534,11 +1620,6 @@
                 }
             };
 
-            // 勾选状态识别
-            const isPromptSelected = (item) => {
-                return selectedPrompts.value.some(p => p.id === item.id);
-            };
-
             const toggleSelect = (item) => {
                 const index = selectedPrompts.value.findIndex(p => p.id === item.id);
                 if (index > -1) {
@@ -1554,7 +1635,7 @@
                 triggerToast('已清空', '已取消勾选所有提示词');
             };
 
-            // 【新增预设逻辑 1】：根据预设中的 ID 在主数据库中查询对应的提示词最新值（支持跨分类）
+            // 预设中的 ID 查询最新提示词
             const findPromptById = (id) => {
                 for (const cat of dbData.value) {
                     const found = cat.prompts.find(p => p.id === id);
@@ -1563,7 +1644,7 @@
                 return null;
             };
 
-            // 【新增预设逻辑 2】：生成当前预设组合的提示词名称预览（用逗号分隔）
+            // 生成常用组合名称预览
             const getPresetNamesPreview = (preset) => {
                 const names = [];
                 preset.promptIds.forEach(id => {
@@ -1573,14 +1654,12 @@
                 return names.length > 0 ? names.join(', ') : '包含的提示词已在本地被删除';
             };
 
-            // 【新增预设逻辑 3】：打开“保存常用组合”的弹窗
             const openSavePresetModal = () => {
                 newPresetName.value = '';
                 showSavePresetModal.value = true;
                 nextTick(() => { if (presetInput.value) presetInput.value.focus(); });
             };
 
-            // 【新增预设逻辑 4】：执行将当前勾选保存为预设
             const saveActiveAsPreset = () => {
                 const name = newPresetName.value.trim();
                 if (!name) {
@@ -1588,11 +1667,9 @@
                     return;
                 }
                 
-                // 提取当前勾选的所有提示词ID
                 const ids = selectedPrompts.value.map(p => p.id);
                 if (ids.length === 0) return;
 
-                // 创建并压入预设数组
                 const newPreset = {
                     id: Date.now(),
                     name: name,
@@ -1600,14 +1677,12 @@
                 };
                 presets.value.push(newPreset);
                 
-                // 持久化写入 LocalStorage
                 localStorage.setItem('promptPresets', JSON.stringify(presets.value));
                 showSavePresetModal.value = false;
-                rightTab.value = 'presets'; // 自动跳转至预设列表页查看
+                rightTab.value = 'presets'; 
                 triggerToast('预设组合保存成功', `已存入常用列表: ${name}`);
             };
 
-            // 【新增预设逻辑 5】：应用常用组合（支持覆盖或追加）
             const applyPreset = (preset, append = false) => {
                 if (!append) {
                     selectedPrompts.value = [];
@@ -1617,7 +1692,6 @@
                 preset.promptIds.forEach(id => {
                     const p = findPromptById(id);
                     if (p) {
-                        // 排重
                         if (!selectedPrompts.value.some(sel => sel.id === p.id)) {
                             selectedPrompts.value.push(p);
                             successCount++;
@@ -1626,23 +1700,31 @@
                 });
 
                 if (successCount > 0) {
-                    rightTab.value = 'selected'; // 应用后跳转到清单页方便用户直观查看
+                    rightTab.value = 'selected'; 
                     triggerToast(append ? '➕ 追加预设成功' : '⚡ 预设加载成功', `已勾选【${preset.name}】中的 ${successCount} 个提示词`);
                 } else {
                     triggerToast('应用失效', '❌ 该预设包含的提示词已被您在本地删除！');
                 }
             };
 
-            // 【新增预设逻辑 6】：删除常用预设组合
-            const deletePreset = (preset) => {
-                if (!confirm(`确定要删除常用组合【${preset.name}】吗？`)) return;
-                
-                presets.value = presets.value.filter(p => p.id !== preset.id);
-                localStorage.setItem('promptPresets', JSON.stringify(presets.value));
-                triggerToast('预设已删除', `已移除组合: ${preset.name}`);
+            // 删除预设
+            const triggerDeletePreset = (preset) => {
+                presetToDelete.value = preset;
+                showDeletePresetConfirm.value = true;
             };
 
-            // 正负向提示词冲突静默检测
+            const executeDeletePreset = () => {
+                const preset = presetToDelete.value;
+                if (preset) {
+                    presets.value = presets.value.filter(p => p.id !== preset.id);
+                    localStorage.setItem('promptPresets', JSON.stringify(presets.value));
+                    triggerToast('预设已删除', `已移除组合: ${preset.name}`);
+                }
+                showDeletePresetConfirm.value = false;
+                presetToDelete.value = null;
+            };
+
+            // 正负向提示词冲突检测
             const checkConflictAndWarn = () => {
                 const posRaw = sortedSelectedPrompts.value.map(item => item.positive).filter(Boolean).join(', ');
                 const negRaw = sortedSelectedPrompts.value.map(item => item.negative).filter(Boolean).join(', ');
@@ -1670,7 +1752,7 @@
                 return false;
             };
 
-            // 同步文本域选中复制机制（100% 成功率）
+            // 同步文本域选中复制机制
             const copyToClipboard = (text) => {
                 return new Promise((resolve, reject) => {
                     try {
@@ -1695,15 +1777,47 @@
                         const successful = document.execCommand('copy');
                         document.body.removeChild(textArea);
                         
-                        if (successful) {
-                            resolve();
-                        } else {
-                            reject(new Error("系统底层复制指令拒绝"));
-                        }
+                        if (successful) resolve();
+                        else reject(new Error("系统底层复制指令拒绝"));
                     } catch (err) {
                         reject(err);
                     }
                 });
+            };
+
+            // 智能去重及权重分析器
+            const parsePromptTokenWeight = (phrase) => {
+                let str = phrase.trim();
+                if (!str) return { word: "", weight: 0, original: phrase };
+
+                let colonMatch = str.match(/^\(+(.+?):([0-9.]+)\)+$/);
+                if (colonMatch) {
+                    return {
+                        word: colonMatch[1].trim().toLowerCase(),
+                        weight: parseFloat(colonMatch[2]),
+                        original: phrase
+                    };
+                }
+
+                let leftParens = (str.match(/^\(+/)||[""])[0].length;
+                let rightParens = (str.match(/\)+$/)||[""])[0].length;
+                let parens = Math.min(leftParens, rightParens);
+                
+                if (parens > 0) {
+                    let core = str.slice(parens, -parens).trim();
+                    let weight = Math.pow(1.1, parens);
+                    return {
+                        word: core.toLowerCase(),
+                        weight: weight,
+                        original: phrase
+                    };
+                }
+
+                return {
+                    word: str.toLowerCase(),
+                    weight: 1.0,
+                    original: phrase
+                };
             };
 
             // 拼合复制
@@ -1713,25 +1827,86 @@
                     return;
                 }
 
-                const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
-
-                const result = sortedSelectedPrompts.value
+                const rawTexts = sortedSelectedPrompts.value
                     .map(item => isPositive ? item.positive : item.negative)
-                    .filter(text => text && text.trim() !== "")
-                    .join(joinSeparator);
+                    .filter(text => text && text.trim() !== "");
 
-                if (!result) {
-                    triggerToast('未复制任何内容', `选中的卡片中没有 ${isPositive ? '正向' : '反向'} 提示词`);
+                if (rawTexts.length === 0) {
+                    triggerToast('未复制任何内容', `选中的卡片中没有有效的 ${isPositive ? '正向' : '反向'} 提示词`);
                     return;
                 }
 
+                const allTokensRaw = [];
+                rawTexts.forEach(text => {
+                    text.split(',').forEach(tok => {
+                        if (tok.trim()) allTokensRaw.push(tok.trim());
+                    });
+                });
+
+                const seenTokens = {}; 
+                const duplicatesLog = {}; 
+
+                allTokensRaw.forEach(tokStr => {
+                    const parsed = parsePromptTokenWeight(tokStr);
+                    if (!parsed.word) return;
+
+                    if (!seenTokens[parsed.word]) {
+                        seenTokens[parsed.word] = {
+                            weight: parsed.weight,
+                            original: parsed.original
+                        };
+                    } else {
+                        if (!duplicatesLog[parsed.word]) {
+                            duplicatesLog[parsed.word] = [
+                                { original: seenTokens[parsed.word].original, weight: seenTokens[parsed.word].weight, isWinner: false }
+                            ];
+                        }
+                        
+                        duplicatesLog[parsed.word].push({
+                            original: parsed.original,
+                            weight: parsed.weight,
+                            isWinner: false
+                        });
+
+                        if (parsed.weight > seenTokens[parsed.word].weight) {
+                            seenTokens[parsed.word] = {
+                                weight: parsed.weight,
+                                original: parsed.original
+                            };
+                        }
+                    }
+                });
+
+                const finalTokensList = Object.values(seenTokens).map(item => item.original);
+                const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
+                const result = finalTokensList.join(joinSeparator);
+
                 copyToClipboard(result).then(() => {
                     const typeText = isPositive ? '正向' : '反向';
-                    triggerToast(`复制${typeText}提示词成功`, result);
-                    
-                    setTimeout(() => {
-                        checkConflictAndWarn();
-                    }, 350); 
+                    triggerToast(`复制${typeText}提示词成功`, `已自动排重并保留最高权重项`);
+
+                    const conflictWordsList = Object.keys(duplicatesLog);
+                    if (conflictWordsList.length > 0) {
+                        const report = [];
+                        conflictWordsList.forEach(word => {
+                            const winnerText = seenTokens[word].original;
+                            const itemsWithWinner = duplicatesLog[word].map(item => ({
+                                ...item,
+                                isWinner: item.original === winnerText
+                            }));
+                            report.push({
+                                word: word,
+                                items: itemsWithWinner
+                            });
+                        });
+
+                        dupMergeConflicts.value = report;
+                        showDupMergeModal.value = true;
+                    } else {
+                        setTimeout(() => {
+                            checkConflictAndWarn();
+                        }, 350);
+                    }
                 }).catch(err => {
                     console.error("复制核心发生底层阻断:", err);
                     triggerToast('复制失败', '❌ 写入剪贴板失败，请尝试重新选中复制');
@@ -1782,17 +1957,15 @@
                 showImportDuplicateModal,
                 importConflictItems,
                 importCleanItems,
+                showDeletePresetConfirm,
+                presetToDelete,
+                showDupMergeModal,
+                dupMergeConflicts,
                 draggedIndex,
                 displayedPrompts,
                 initResize,
                 inspectPrompt,
-                confirmSwitch: () => {
-                    if (pendingSwitchItem.value && pendingSwitchItem.value.id !== null) {
-                        confirmSwitch();
-                    } else {
-                        confirmSwitchForCategory();
-                    }
-                },
+                handleConfirmSwitch,
                 cancelSwitch,
                 selectCategory,
                 openAddCategoryModal,
@@ -1825,7 +1998,8 @@
                 openSavePresetModal,
                 saveActiveAsPreset,
                 applyPreset,
-                deletePreset
+                triggerDeletePreset,
+                executeDeletePreset
             };
         }
     }).mount('#app');
