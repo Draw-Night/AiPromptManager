@@ -48,12 +48,15 @@
         </button>
     </header>
 
-    <!-- 2. 主体内容区（左分类、中工作区、右清单） -->
+    <!-- 2. 主体内容区（带拉伸功能） -->
     <div class="flex flex-1 overflow-hidden">
         
-        <!-- 左侧栏：分类列表 -->
-        <aside class="w-56 bg-white border-r border-slate-200 p-4 flex flex-col justify-between shrink-0">
-            <div class="space-y-1 overflow-y-auto max-h-[75vh] scrollbar-thin">
+        <!-- 【板块 1】：左侧分类列表（绑定动态宽度） -->
+        <aside 
+            :style="{ width: widthCategory + 'px' }" 
+            class="bg-white p-4 flex flex-col justify-between shrink-0 h-full"
+        >
+            <div class="space-y-1 overflow-y-auto h-full scrollbar-thin">
                 <div class="flex justify-between items-center px-3 mb-2">
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">提示词分类</p>
                     <span class="text-[10px] text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">可拖动</span>
@@ -90,12 +93,16 @@
                     </div>
                 </div>
             </div>
-            <div class="text-xs text-slate-400 border-t pt-4">
-                数据存储于本地 prompts.json
-            </div>
         </aside>
 
-        <!-- 中间工作区：左提示词列表(40%) + 右详情及编辑器(60%) -->
+        <!-- 🟥【智能分割条 1】：左侧分类 <-> 中间工作区 -->
+        <div 
+            @mousedown="initResize('category', $event)" 
+            class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
+            title="拖动调整分类栏宽度"
+        ></div>
+
+        <!-- 中间工作区 -->
         <main class="flex-1 p-6 flex flex-col overflow-hidden bg-slate-50/50">
             
             <!-- 头部操作栏 -->
@@ -133,11 +140,14 @@
                 </button>
             </div>
 
-            <!-- 主工作台：左右分栏 -->
-            <div class="flex-1 flex gap-5 overflow-hidden">
+            <!-- 主工作台：包含左卡片列表 与 右详情 -->
+            <div class="flex-1 flex overflow-hidden">
                 
-                <!-- 【左分栏 40%】 提示词小卡片列表 -->
-                <div class="w-5/12 flex flex-col space-y-2.5 overflow-y-auto pr-1 scrollbar-thin">
+                <!-- 【板块 2】：提示词小卡片列表（绑定动态宽度） -->
+                <div 
+                    :style="{ width: widthList + 'px' }" 
+                    class="flex flex-col space-y-2.5 overflow-y-auto pr-1 scrollbar-thin h-full shrink-0"
+                >
                     <div 
                         v-for="item in displayedPrompts" 
                         :key="item.id"
@@ -147,7 +157,7 @@
                                  ? 'border-indigo-500 bg-indigo-50/60 shadow-sm ring-1 ring-indigo-500' 
                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm']"
                     >
-                        <div class="flex items-center space-x-3 min-w-0 pr-6">
+                        <div class="flex items-center space-x-3 min-w-0 pr-6 w-full">
                             <!-- 勾选框 -->
                             <input 
                                 type="checkbox" 
@@ -155,16 +165,18 @@
                                 @change.stop="toggleSelect(item)"
                                 class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                             >
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <div class="flex items-center space-x-2">
                                     <span class="font-bold text-slate-800 text-sm truncate">{{ item.name }}</span>
                                     <span v-if="searchQuery" class="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-medium shrink-0">
                                         {{ item._category }}
                                     </span>
                                 </div>
-                                <!-- 极其简短的单行预览 -->
-                                <p class="text-xs text-slate-400 truncate mt-1">
-                                    P: {{ item.positive || '-' }}
+                                
+                                <!-- 📒【修改预览】：将提示词英文预览修改为“手账内容预览” -->
+                                <p class="text-xs text-amber-600 font-medium truncate mt-1 flex items-center space-x-1">
+                                    <span class="shrink-0 text-[10px]">📒</span>
+                                    <span class="truncate">{{ item.desc || '暂无手账备忘' }}</span>
                                 </p>
                             </div>
                         </div>
@@ -185,8 +197,15 @@
                     </div>
                 </div>
 
-                <!-- 【右分栏 60%】 提示词详情展示与内联编辑器（2/3 正向, 1/3 反向） -->
-                <div class="w-7/12 h-full flex flex-col">
+                <!-- 🟥【智能分割条 2】：中间提示词列表 <-> 右侧具体提示词内容 -->
+                <div 
+                    @mousedown="initResize('list', $event)" 
+                    class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 mx-1 z-20"
+                    title="拖动调整提示词列表宽度"
+                ></div>
+
+                <!-- 【板块 3】：右详情及编辑器（占领剩余的所有自适应空间） -->
+                <div class="flex-1 h-full flex flex-col min-w-[300px]">
                     
                     <!-- 1. 没有选中任何提示词时的占位显示 -->
                     <div v-if="!selectedActiveId" class="h-full border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-white/50">
@@ -198,13 +217,11 @@
                     <!-- 2. 选中后的完整卡片详情 -->
                     <div v-else class="h-full bg-white border border-slate-200 rounded-xl p-4 flex flex-col overflow-hidden shadow-sm">
                         
-                        <!-- 详情栏头部：标题与编辑切换 -->
+                        <!-- 详情栏头部 -->
                         <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-3 shrink-0">
                             <div class="flex items-center space-x-2 min-w-0 flex-1 mr-4">
                                 <span class="text-lg">📄</span>
-                                <!-- 只读名字 -->
                                 <h3 v-if="!isInlineEditing" class="font-bold text-slate-800 text-base truncate">{{ inlineEditForm.name }}</h3>
-                                <!-- 编辑名字 -->
                                 <input 
                                     v-else 
                                     v-model="inlineEditForm.name" 
@@ -239,23 +256,20 @@
                             </div>
                         </div>
 
-                        <!-- 详情栏主体：2/3 和 1/3 的黄金比例上下拆分 -->
-                        <div class="flex-1 flex flex-col space-y-4 overflow-hidden">
+                        <!-- 详情栏主体：2/3 和 1/3 黄金分割比例 -->
+                        <div class="flex-1 flex flex-col space-y-3 overflow-hidden">
                             
-                            <!-- 【上部分 2/3】 正向提示词区域 -->
+                            <!-- 【上 2/3】 正向提示词区域 -->
                             <div class="flex-[2] flex flex-col min-h-0">
-                                <label class="text-xs font-bold text-emerald-700 mb-1.5 flex items-center space-x-1.5">
+                                <label class="text-xs font-bold text-emerald-700 mb-1 flex items-center space-x-1.5">
                                     <span>🟢 正向提示词 (Positive)</span>
                                 </label>
-                                
-                                <!-- 只读视图 -->
                                 <div 
                                     v-if="!isInlineEditing" 
                                     class="flex-1 overflow-y-auto bg-emerald-50/30 text-slate-700 p-3 rounded-lg border border-emerald-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin"
                                 >
                                     {{ inlineEditForm.positive || '暂无内容' }}
                                 </div>
-                                <!-- 编辑视图 -->
                                 <textarea 
                                     v-else 
                                     v-model="inlineEditForm.positive" 
@@ -264,25 +278,41 @@
                                 ></textarea>
                             </div>
 
-                            <!-- 【下部分 1/3】 反向提示词区域 -->
+                            <!-- 【下 1/3】 反向提示词区域 -->
                             <div class="flex-[1] flex flex-col min-h-0">
-                                <label class="text-xs font-bold text-rose-700 mb-1.5 flex items-center space-x-1.5">
+                                <label class="text-xs font-bold text-rose-700 mb-1 flex items-center space-x-1.5">
                                     <span>🔴 反向提示词 (Negative)</span>
                                 </label>
-                                
-                                <!-- 只读视图 -->
                                 <div 
                                     v-if="!isInlineEditing" 
                                     class="flex-1 overflow-y-auto bg-rose-50/30 text-slate-700 p-3 rounded-lg border border-rose-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin"
                                 >
                                     {{ inlineEditForm.negative || '暂无内容' }}
                                 </div>
-                                <!-- 编辑视图 -->
                                 <textarea 
                                     v-else 
                                     v-model="inlineEditForm.negative" 
                                     class="flex-1 resize-none border border-rose-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-rose-500 focus:outline-none bg-white text-slate-700 scrollbar-thin"
                                     placeholder="请输入反向提示词..."
+                                ></textarea>
+                            </div>
+
+                            <!-- 【最下】 手账编辑/展示区 -->
+                            <div class="flex-[1] flex flex-col min-h-0 pt-1 border-t border-slate-100">
+                                <label class="text-xs font-bold text-amber-800 mb-1 flex items-center space-x-1.5">
+                                    <span>📖 画师手账备忘 (中文说明)</span>
+                                </label>
+                                <div 
+                                    v-if="!isInlineEditing" 
+                                    class="flex-1 overflow-y-auto bg-amber-50/30 text-slate-700 p-2.5 rounded-lg border border-amber-100 text-xs whitespace-pre-wrap select-text scrollbar-thin"
+                                >
+                                    {{ inlineEditForm.desc || '该提示词暂无中文手账备忘，点击右上方编辑按钮可以添加说明。' }}
+                                </div>
+                                <textarea 
+                                    v-else 
+                                    v-model="inlineEditForm.desc" 
+                                    class="flex-1 resize-none border border-amber-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white text-slate-700 scrollbar-thin"
+                                    placeholder="在这里输入画师手账备忘..."
                                 ></textarea>
                             </div>
 
@@ -295,8 +325,18 @@
             </div>
         </main>
 
-        <!-- 右侧栏：已选提示词清单 -->
-        <aside class="w-80 bg-white border-l border-slate-200 p-4 flex flex-col justify-between shrink-0">
+        <!-- 🟥【智能分割条 3】：中间工作区 <-> 右侧已选清单 -->
+        <div 
+            @mousedown="initResize('selected', $event)" 
+            class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
+            title="拖动调整已选清单栏宽度"
+        ></div>
+
+        <!-- 【板块 4】：右侧栏：已选提示词清单（绑定动态宽度） -->
+        <aside 
+            :style="{ width: widthSelected + 'px' }" 
+            class="bg-white p-4 flex flex-col justify-between shrink-0 h-full"
+        >
             <div class="flex flex-col h-full overflow-hidden">
                 <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-3 shrink-0">
                     <div class="flex items-center space-x-2">
@@ -389,11 +429,15 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">正向提示词 (Positive)</label>
-                    <textarea v-model="tempPrompt.positive" rows="3" placeholder="blonde hair, twintails" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
+                    <textarea v-model="tempPrompt.positive" rows="2" placeholder="blonde hair, twintails" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">反向提示词 (Negative)</label>
                     <textarea v-model="tempPrompt.negative" rows="2" placeholder="black hair, short hair" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">备注手账（中文说明/备忘录）</label>
+                    <textarea v-model="tempPrompt.desc" rows="2" placeholder="推荐Lora、开启权重等心得..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
@@ -441,17 +485,22 @@
             // 搜索关键字
             const searchQuery = ref('');
 
-            // 【主从关联核心状态】
-            const selectedActiveId = ref(null);      // 当前选中的提示词ID
-            const isInlineEditing = ref(false);       // 是否处于右侧编辑状态
-            const inlineEditForm = ref({ id: '', name: '', positive: '', negative: '', _category: '' }); // 右侧表单数据缓冲
+            // 【主从栏自主拉伸】：定义各面板的初始宽度数值（优先读取本地记忆，无记忆则使用默认值）
+            const widthCategory = ref(parseInt(localStorage.getItem('widthCategory')) || 224);
+            const widthList = ref(parseInt(localStorage.getItem('widthList')) || 320);
+            const widthSelected = ref(parseInt(localStorage.getItem('widthSelected')) || 320);
+
+            // 主从关联状态
+            const selectedActiveId = ref(null);      
+            const isInlineEditing = ref(false);       
+            const inlineEditForm = ref({ id: '', name: '', positive: '', negative: '', desc: '', _category: '' }); 
 
             // Toast 状态
             const toast = ref({ show: false, title: '', message: '' });
 
-            // 弹窗状态（仅用于新增）
+            // 弹窗状态
             const showPromptModal = ref(false);
-            const tempPrompt = ref({ name: '', positive: '', negative: '' });
+            const tempPrompt = ref({ name: '', positive: '', negative: '', desc: '' });
 
             // 新增分类
             const showCategoryModal = ref(false);
@@ -467,6 +516,45 @@
                 toast.value.message = message;
                 toast.value.show = true;
                 setTimeout(() => { toast.value.show = false; }, 2500);
+            };
+
+            // 【核心拉伸逻辑函数】：通过监听 Mouse 事件实时拖动调整宽度
+            const initResize = (panel, event) => {
+                event.preventDefault();
+                const startX = event.clientX;
+                const startW_Category = widthCategory.value;
+                const startW_List = widthList.value;
+                const startW_Selected = widthSelected.value;
+
+                const doDrag = (e) => {
+                    const deltaX = e.clientX - startX;
+                    if (panel === 'category') {
+                        // 最小限制 160px，最大限制 380px
+                        const newW = startW_Category + deltaX;
+                        widthCategory.value = Math.max(160, Math.min(380, newW));
+                    } else if (panel === 'list') {
+                        // 最小限制 200px，最大限制 550px
+                        const newW = startW_List + deltaX;
+                        widthList.value = Math.max(200, Math.min(550, newW));
+                    } else if (panel === 'selected') {
+                        // 清单在右侧，向右拉 deltaX 为负反馈，故使用减号
+                        const newW = startW_Selected - deltaX;
+                        widthSelected.value = Math.max(200, Math.min(450, newW));
+                    }
+                };
+
+                const stopDrag = () => {
+                    document.removeEventListener('mousemove', doDrag);
+                    document.removeEventListener('mouseup', stopDrag);
+                    
+                    // 保存当前的最新拉伸宽度至系统本地，实现永久记忆
+                    localStorage.setItem('widthCategory', widthCategory.value);
+                    localStorage.setItem('widthList', widthList.value);
+                    localStorage.setItem('widthSelected', widthSelected.value);
+                };
+
+                document.addEventListener('mousemove', doDrag);
+                document.addEventListener('mouseup', stopDrag);
             };
 
             // 复制逻辑
@@ -497,7 +585,7 @@
                 return successful;
             };
 
-            // 计算属性：左侧展示的过滤后列表
+            // 计算属性：过滤后的提示词卡片列表
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
                 if (!query) {
@@ -518,7 +606,6 @@
 
             // 选中/激活左侧某个提示词
             const inspectPrompt = (item) => {
-                // 如果正在编辑另一个，先提示保存或取消
                 if (isInlineEditing.value && selectedActiveId.value !== item.id) {
                     if (!confirm("您正在编辑当前提示词，切换后未保存的内容将丢失，确定切换吗？")) {
                         return;
@@ -532,7 +619,7 @@
             const selectCategory = (categoryName) => {
                 searchQuery.value = '';
                 currentCategory.value = categoryName;
-                selectedActiveId.value = null; // 切换分类后清除右侧选中
+                selectedActiveId.value = null; 
                 isInlineEditing.value = false;
             };
 
@@ -630,7 +717,7 @@
 
             // 【添加提示词弹窗】
             const openAddPromptModal = () => {
-                tempPrompt.value = { name: '', positive: '', negative: '' };
+                tempPrompt.value = { name: '', positive: '', negative: '', desc: '' };
                 showPromptModal.value = true;
             };
 
@@ -646,7 +733,6 @@
                 showPromptModal.value = false;
                 await updateBackend();
                 
-                // 自动选中并查看新创建的项目
                 selectedActiveId.value = newId;
                 inlineEditForm.value = { ...newObj, _category: currentCategory.value };
                 isInlineEditing.value = false;
@@ -667,6 +753,7 @@
                     targetCat.prompts[idx].name = inlineEditForm.value.name;
                     targetCat.prompts[idx].positive = inlineEditForm.value.positive;
                     targetCat.prompts[idx].negative = inlineEditForm.value.negative;
+                    targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
                 }
 
                 // 同步右侧已选缓存
@@ -675,6 +762,7 @@
                     selectedPrompts.value[sIdx].name = inlineEditForm.value.name;
                     selectedPrompts.value[sIdx].positive = inlineEditForm.value.positive;
                     selectedPrompts.value[sIdx].negative = inlineEditForm.value.negative;
+                    selectedPrompts.value[sIdx].desc = inlineEditForm.value.desc;
                 }
 
                 isInlineEditing.value = false;
@@ -684,7 +772,6 @@
 
             // 【内联二次编辑：取消】
             const cancelInlineEdit = () => {
-                // 还原原始数据
                 const originalCat = dbData.value.find(item => item.category === inlineEditForm.value._category);
                 if (originalCat) {
                     const original = originalCat.prompts.find(p => p.id === selectedActiveId.value);
@@ -705,7 +792,6 @@
                     targetCat.prompts = targetCat.prompts.filter(p => p.id !== item.id);
                     selectedPrompts.value = selectedPrompts.value.filter(p => p.id !== item.id);
 
-                    // 如果删除的是当前处于右侧 Inspect 的词，清空右侧面板
                     if (selectedActiveId.value === item.id) {
                         selectedActiveId.value = null;
                         isInlineEditing.value = false;
@@ -716,7 +802,7 @@
                 }
             };
 
-            // 勾选操作
+            // 勾选
             const isPromptSelected = (item) => {
                 return selectedPrompts.value.some(p => p.id === item.id);
             };
@@ -769,6 +855,9 @@
                 selectedPrompts,
                 sortedSelectedPrompts,
                 searchQuery,
+                widthCategory,
+                widthList,
+                widthSelected,
                 selectedActiveId,
                 isInlineEditing,
                 inlineEditForm,
@@ -780,6 +869,7 @@
                 catInput,
                 draggedIndex,
                 displayedPrompts,
+                initResize,
                 inspectPrompt,
                 selectCategory,
                 openAddCategoryModal,
