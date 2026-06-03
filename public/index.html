@@ -29,6 +29,11 @@
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+        /* 强制允许用户选择与输入 */
+        .input-focus-allow {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden select-none">
@@ -51,7 +56,7 @@
     <!-- 2. 主体内容区（带拉伸功能） -->
     <div class="flex flex-1 overflow-hidden">
         
-        <!-- 【板块 1】：左侧分类列表（绑定动态宽度） -->
+        <!-- 【板块 1】：左侧分类列表 -->
         <aside 
             :style="{ width: widthCategory + 'px' }" 
             class="bg-white p-4 flex flex-col justify-between shrink-0 h-full"
@@ -79,13 +84,22 @@
                         <span class="truncate">{{ catItem.category }}</span>
                     </div>
                     
-                    <div class="flex items-center space-x-1.5 shrink-0">
-                        <span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                    <div class="flex items-center space-x-1 shrink-0">
+                        <span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full group-hover:hidden">
                             {{ catItem.prompts.length }}
                         </span>
                         <button 
-                            @click.stop="deleteCategory(catItem.category)" 
-                            class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-0.5 rounded transition-opacity"
+                            @click.stop.prevent="openRenameCategoryModal(catItem.category)" 
+                            draggable="false"
+                            class="hidden group-hover:block text-slate-400 hover:text-indigo-600 p-0.5 rounded transition-all"
+                            title="重命名分类"
+                        >
+                            ✏️
+                        </button>
+                        <button 
+                            @click.stop.prevent="triggerDeleteCategory(catItem.category)" 
+                            draggable="false"
+                            class="hidden group-hover:block text-slate-400 hover:text-rose-600 p-0.5 rounded transition-all"
                             title="删除分类"
                         >
                             ✕
@@ -95,11 +109,10 @@
             </div>
         </aside>
 
-        <!-- 🟥【智能分割条 1】：左侧分类 <-> 中间工作区 -->
+        <!-- 🟥【智能分割条 1】 -->
         <div 
             @mousedown="initResize('category', $event)" 
             class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
-            title="拖动调整分类栏宽度"
         ></div>
 
         <!-- 中间工作区 -->
@@ -119,7 +132,7 @@
                             v-model="searchQuery" 
                             type="text" 
                             placeholder="输入提示词名称检索..." 
-                            class="w-full border border-slate-200 rounded-lg pl-9 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm transition-all"
+                            class="w-full border border-slate-200 rounded-lg pl-9 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm transition-all input-focus-allow"
                         >
                         <button 
                             v-if="searchQuery" 
@@ -131,19 +144,29 @@
                     </div>
                 </div>
 
-                <button 
-                    v-if="!searchQuery && dbData.length > 0"
-                    @click="openAddPromptModal" 
-                    class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition-all"
-                >
-                    + 新增提示词
-                </button>
+                <!-- 操作按钮组 -->
+                <div class="flex space-x-2 shrink-0">
+                    <button 
+                        v-if="!searchQuery && dbData.length > 0"
+                        @click="openBulkImportModal" 
+                        class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-250 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-all flex items-center space-x-1"
+                    >
+                        <span>📥 批量导入</span>
+                    </button>
+                    <button 
+                        v-if="!searchQuery && dbData.length > 0"
+                        @click="openAddPromptModal" 
+                        class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition-all"
+                    >
+                        + 新增提示词
+                    </button>
+                </div>
             </div>
 
-            <!-- 主工作台：包含左卡片列表 与 右详情 -->
+            <!-- 主工作台 -->
             <div class="flex-1 flex overflow-hidden">
                 
-                <!-- 【板块 2】：提示词小卡片列表（绑定动态宽度） -->
+                <!-- 【板块 2】：提示词小卡片列表 -->
                 <div 
                     :style="{ width: widthList + 'px' }" 
                     class="flex flex-col space-y-2.5 overflow-y-auto pr-1 scrollbar-thin h-full shrink-0"
@@ -173,7 +196,7 @@
                                     </span>
                                 </div>
                                 
-                                <!-- 📒【修改预览】：将提示词英文预览修改为“手账内容预览” -->
+                                <!-- 手账中文说明预览 -->
                                 <p class="text-xs text-amber-600 font-medium truncate mt-1 flex items-center space-x-1">
                                     <span class="shrink-0 text-[10px]">📒</span>
                                     <span class="truncate">{{ item.desc || '暂无手账备忘' }}</span>
@@ -183,7 +206,7 @@
 
                         <!-- 悬浮删除按钮 -->
                         <button 
-                            @click.stop="deletePrompt(item)" 
+                            @click.stop.prevent="triggerDeletePrompt(item)" 
                             class="absolute right-3 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 rounded transition-opacity"
                             title="删除提示词"
                         >
@@ -197,14 +220,13 @@
                     </div>
                 </div>
 
-                <!-- 🟥【智能分割条 2】：中间提示词列表 <-> 右侧具体提示词内容 -->
+                <!-- 🟥【智能分割条 2】 -->
                 <div 
                     @mousedown="initResize('list', $event)" 
                     class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 mx-1 z-20"
-                    title="拖动调整提示词列表宽度"
                 ></div>
 
-                <!-- 【板块 3】：右详情及编辑器（占领剩余的所有自适应空间） -->
+                <!-- 【板块 3】：右详情及编辑器 -->
                 <div class="flex-1 h-full flex flex-col min-w-[300px]">
                     
                     <!-- 1. 没有选中任何提示词时的占位显示 -->
@@ -226,7 +248,7 @@
                                     v-else 
                                     v-model="inlineEditForm.name" 
                                     type="text" 
-                                    class="border border-indigo-200 rounded px-2 py-1 text-sm font-bold text-slate-800 w-full focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    class="border border-indigo-200 rounded px-2 py-1 text-sm font-bold text-slate-800 w-full focus:outline-none focus:ring-1 focus:ring-indigo-500 input-focus-allow"
                                 >
                             </div>
                             
@@ -256,7 +278,7 @@
                             </div>
                         </div>
 
-                        <!-- 详情栏主体：2/3 和 1/3 黄金分割比例 -->
+                        <!-- 详情栏主体 -->
                         <div class="flex-1 flex flex-col space-y-3 overflow-hidden">
                             
                             <!-- 【上 2/3】 正向提示词区域 -->
@@ -273,7 +295,7 @@
                                 <textarea 
                                     v-else 
                                     v-model="inlineEditForm.positive" 
-                                    class="flex-1 resize-none border border-emerald-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white text-slate-700 scrollbar-thin"
+                                    class="flex-1 resize-none border border-emerald-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"
                                     placeholder="请输入正向提示词..."
                                 ></textarea>
                             </div>
@@ -292,7 +314,7 @@
                                 <textarea 
                                     v-else 
                                     v-model="inlineEditForm.negative" 
-                                    class="flex-1 resize-none border border-rose-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-rose-500 focus:outline-none bg-white text-slate-700 scrollbar-thin"
+                                    class="flex-1 resize-none border border-rose-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-rose-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"
                                     placeholder="请输入反向提示词..."
                                 ></textarea>
                             </div>
@@ -311,7 +333,7 @@
                                 <textarea 
                                     v-else 
                                     v-model="inlineEditForm.desc" 
-                                    class="flex-1 resize-none border border-amber-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white text-slate-700 scrollbar-thin"
+                                    class="flex-1 resize-none border border-amber-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"
                                     placeholder="在这里输入画师手账备忘..."
                                 ></textarea>
                             </div>
@@ -325,14 +347,13 @@
             </div>
         </main>
 
-        <!-- 🟥【智能分割条 3】：中间工作区 <-> 右侧已选清单 -->
+        <!-- 🟥【智能分割条 3】 -->
         <div 
             @mousedown="initResize('selected', $event)" 
             class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
-            title="拖动调整已选清单栏宽度"
         ></div>
 
-        <!-- 【板块 4】：右侧栏：已选提示词清单（绑定动态宽度） -->
+        <!-- 【板块 4】：右侧栏：已选提示词清单 -->
         <aside 
             :style="{ width: widthSelected + 'px' }" 
             class="bg-white p-4 flex flex-col justify-between shrink-0 h-full"
@@ -420,36 +441,36 @@
 
     <!-- 弹窗1：添加提示词 -->
     <div v-if="showPromptModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
             <h3 class="text-lg font-bold mb-4">🆕 新增提示词</h3>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">提示词名称</label>
-                    <input v-model="tempPrompt.name" type="text" placeholder="例如：金色双马尾" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500">
+                    <input v-model="tempPrompt.name" type="text" placeholder="例如：金色双马尾" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">正向提示词 (Positive)</label>
-                    <textarea v-model="tempPrompt.positive" rows="2" placeholder="blonde hair, twintails" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
+                    <textarea v-model="tempPrompt.positive" rows="2" placeholder="blonde hair, twintails" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">反向提示词 (Negative)</label>
-                    <textarea v-model="tempPrompt.negative" rows="2" placeholder="black hair, short hair" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
+                    <textarea v-model="tempPrompt.negative" rows="2" placeholder="black hair, short hair" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">备注手账（中文说明/备忘录）</label>
-                    <textarea v-model="tempPrompt.desc" rows="2" placeholder="推荐Lora、开启权重等心得..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"></textarea>
+                    <textarea v-model="tempPrompt.desc" rows="2" placeholder="推荐Lora、开启权重等心得..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"></textarea>
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showPromptModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50">取消</button>
-                <button @click="saveNewPrompt" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">保存并查看</button>
+                <button @click="showPromptModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="saveNewPrompt" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium">保存并查看</button>
             </div>
         </div>
     </div>
 
     <!-- 弹窗2：创建分类 -->
-    <div v-if="showCategoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+    <div v-if="showCategoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
             <h3 class="text-lg font-bold mb-4">🆕 创建新分类</h3>
             <div class="space-y-4">
                 <div>
@@ -459,14 +480,171 @@
                         type="text" 
                         ref="catInput"
                         placeholder="例如：发型、背景、光效" 
-                        class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500"
+                        class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
                         @keyup.enter="saveCategory"
                     >
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50">取消</button>
-                <button @click="saveCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">确认创建</button>
+                <button @click="showCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="saveCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium">确认创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗3：批量导入提示词 -->
+    <div v-if="showBulkImportModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-2xl h-[580px] flex flex-col shadow-2xl animate-fade-in">
+            <div class="flex justify-between items-center pb-3 border-b mb-4">
+                <h3 class="text-lg font-bold text-indigo-900 flex items-center space-x-1.5">
+                    <span>📥 批量导入提示词</span>
+                    <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-normal">塞入：{{ currentCategory }}</span>
+                </h3>
+                <button @click="showBulkImportModal = false" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+            </div>
+            
+            <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+                直接在下方文本框中粘贴多行文本。系统会自动识别中英文并自动排版。
+            </p>
+            
+            <div class="flex-1 min-h-0 mb-4">
+                <textarea 
+                    v-model="bulkImportText" 
+                    placeholder="在这里粘贴您的提示词..."
+                    class="w-full h-full border border-slate-200 rounded-xl p-4 text-xs font-mono focus:outline-indigo-500 scrollbar-thin resize-none input-focus-allow"
+                ></textarea>
+            </div>
+            
+            <div class="flex justify-between items-center pt-2">
+                <div class="text-xs text-indigo-600 font-semibold">
+                    {{ parsedPromptsPreviewCount > 0 ? `✨ 智能算法已识别到 ${parsedPromptsPreviewCount} 个提示词项目` : '等待粘贴内容...' }}
+                </div>
+                <div class="flex space-x-3">
+                    <button @click="showBulkImportModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                    <button 
+                        @click="executeBulkImport" 
+                        :disabled="parsedPromptsPreviewCount === 0"
+                        class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    >
+                        确认导入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗4：分类重命名 ✏️ -->
+    <div v-if="showRenameCategoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
+            <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1">
+                <span>✏️ 分类重命名</span>
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-500 mb-1">将【{{ oldCategoryName }}】修改为：</label>
+                    <input 
+                        v-model="renameCategoryName" 
+                        type="text" 
+                        ref="renameCatInput"
+                        placeholder="输入新的分类名称" 
+                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
+                        @keyup.enter="saveRenameCategory"
+                    >
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button @click="showRenameCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="saveRenameCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗5：确认删除分类 -->
+    <div v-if="showDeleteCategoryConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-rose-100 animate-fade-in">
+            <div class="flex items-center space-x-3 mb-3 text-rose-600">
+                <span class="text-2xl">⚠️</span>
+                <h3 class="text-lg font-bold">警告：确定删除分类吗？</h3>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                您即将删除分类 <span class="font-bold text-slate-900">【{{ categoryToDelete }}】</span>。<br>
+                删除后，该分类下所有提示词将永久丢失。该操作无法撤销！
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button @click="showDeleteCategoryConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="executeDeleteCategory" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow">确认永久删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗6：确认删除提示词 -->
+    <div v-if="showDeletePromptConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-rose-100 animate-fade-in">
+            <div class="flex items-center space-x-3 mb-3 text-rose-600">
+                <span class="text-2xl">🗑️</span>
+                <h3 class="text-lg font-bold">确定删除该提示词吗？</h3>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                确定要从数据库中删除提示词 <span class="font-bold text-slate-900">【{{ promptToDelete?.name }}】</span> 吗？
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button @click="showDeletePromptConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="executeDeletePrompt" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗7：未保存强制切换提示词 -->
+    <div v-if="showSwitchConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-amber-100">
+            <div class="flex items-center space-x-3 mb-3 text-amber-600">
+                <span class="text-2xl">⚠️</span>
+                <h3 class="text-lg font-bold">内容尚未保存！</h3>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                您当前正在编辑提示词，直接切换列表将会<span class="font-bold text-rose-600">丢失所有未保存的修改</span>！<br>
+                确定要放弃当前修改并强行切换吗？
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button @click="cancelSwitch" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">继续编辑</button>
+                <button @click="confirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 shadow">放弃修改并切换</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 【新增】弹窗8：高颜值“正/负提示词冲突检测”提示面板 ⚠️ -->
+    <div v-if="showConflictModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl border border-amber-100 animate-fade-in">
+            <div class="flex items-center space-x-3 mb-4 text-amber-600">
+                <span class="text-3xl">⚠️</span>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">复制成功，但发现正反冲突词！</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">同一提示词在正负词库中同时存在，将严重干扰AI生成效果</p>
+                </div>
+            </div>
+            
+            <div class="bg-slate-50 rounded-xl p-4 mb-5 border border-slate-150 max-h-60 overflow-y-auto scrollbar-thin">
+                <div class="text-xs font-bold text-slate-500 mb-2.5">💥 发生重合冲突的英文词：</div>
+                <!-- 循环渲染冲突列表 -->
+                <div class="flex flex-wrap gap-2">
+                    <span 
+                        v-for="word in conflictWords" 
+                        :key="word" 
+                        class="text-xs font-mono font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md border border-amber-200 select-all"
+                    >
+                        {{ word }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <span class="text-[11px] text-slate-400">💡 提示：双击上面词条可快速手动复制</span>
+                <button 
+                    @click="showConflictModal = false" 
+                    class="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 shadow"
+                >
+                    我知道了
+                </button>
             </div>
         </div>
     </div>
@@ -482,10 +660,10 @@
             const currentCategory = ref('');
             const selectedPrompts = ref([]); 
 
-            // 搜索关键字
+            // 搜索
             const searchQuery = ref('');
 
-            // 【主从栏自主拉伸】：定义各面板的初始宽度数值（优先读取本地记忆，无记忆则使用默认值）
+            // 自主拉伸宽度
             const widthCategory = ref(parseInt(localStorage.getItem('widthCategory')) || 224);
             const widthList = ref(parseInt(localStorage.getItem('widthList')) || 320);
             const widthSelected = ref(parseInt(localStorage.getItem('widthSelected')) || 320);
@@ -502,10 +680,35 @@
             const showPromptModal = ref(false);
             const tempPrompt = ref({ name: '', positive: '', negative: '', desc: '' });
 
-            // 新增分类
+            // 批量导入
+            const showBulkImportModal = ref(false);
+            const bulkImportText = ref('');
+
+            // 创建分类
             const showCategoryModal = ref(false);
             const newCategoryName = ref('');
             const catInput = ref(null);
+
+            // 分类重命名弹窗状态
+            const showRenameCategoryModal = ref(false);
+            const oldCategoryName = ref('');
+            const renameCategoryName = ref('');
+            const renameCatInput = ref(null);
+
+            // 无阻断自建弹窗状态
+            const showDeleteCategoryConfirm = ref(false);
+            const categoryToDelete = ref('');
+            
+            const showDeletePromptConfirm = ref(false);
+            const promptToDelete = ref(null);
+
+            // 无阻断切换确认状态
+            const showSwitchConfirm = ref(false);
+            const pendingSwitchItem = ref(null);
+
+            // 【新增】提示词正负冲突弹窗状态
+            const showConflictModal = ref(false);
+            const conflictWords = ref([]);
 
             // 拖拽
             const draggedIndex = ref(null);
@@ -518,7 +721,7 @@
                 setTimeout(() => { toast.value.show = false; }, 2500);
             };
 
-            // 【核心拉伸逻辑函数】：通过监听 Mouse 事件实时拖动调整宽度
+            // 弹性拉伸控制
             const initResize = (panel, event) => {
                 event.preventDefault();
                 const startX = event.clientX;
@@ -529,15 +732,12 @@
                 const doDrag = (e) => {
                     const deltaX = e.clientX - startX;
                     if (panel === 'category') {
-                        // 最小限制 160px，最大限制 380px
                         const newW = startW_Category + deltaX;
                         widthCategory.value = Math.max(160, Math.min(380, newW));
                     } else if (panel === 'list') {
-                        // 最小限制 200px，最大限制 550px
                         const newW = startW_List + deltaX;
                         widthList.value = Math.max(200, Math.min(550, newW));
                     } else if (panel === 'selected') {
-                        // 清单在右侧，向右拉 deltaX 为负反馈，故使用减号
                         const newW = startW_Selected - deltaX;
                         widthSelected.value = Math.max(200, Math.min(450, newW));
                     }
@@ -546,8 +746,6 @@
                 const stopDrag = () => {
                     document.removeEventListener('mousemove', doDrag);
                     document.removeEventListener('mouseup', stopDrag);
-                    
-                    // 保存当前的最新拉伸宽度至系统本地，实现永久记忆
                     localStorage.setItem('widthCategory', widthCategory.value);
                     localStorage.setItem('widthList', widthList.value);
                     localStorage.setItem('widthSelected', widthSelected.value);
@@ -585,7 +783,7 @@
                 return successful;
             };
 
-            // 计算属性：过滤后的提示词卡片列表
+            // 计算属性：左侧过滤展现卡片
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
                 if (!query) {
@@ -604,26 +802,166 @@
                 }
             });
 
-            // 选中/激活左侧某个提示词
-            const inspectPrompt = (item) => {
-                if (isInlineEditing.value && selectedActiveId.value !== item.id) {
-                    if (!confirm("您正在编辑当前提示词，切换后未保存的内容将丢失，确定切换吗？")) {
-                        return;
+            // 智能解析批量文本
+            const parseBulkText = (text) => {
+                if (!text.trim()) return [];
+                const lines = text.split(/\r?\n/);
+                const results = [];
+                let englishBuffer = []; 
+
+                const hasChinese = (str) => /[\u4e00-\u9fa5]/.test(str);
+
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line) continue; 
+
+                    if (hasChinese(line)) {
+                        const chineseMatch = line.match(/[\u4e00-\u9fa5]/);
+                        const splitIdx = chineseMatch ? chineseMatch.index : 0;
+
+                        let englishPart = line.slice(0, splitIdx).trim();
+                        let chinesePart = line.slice(splitIdx).trim();
+
+                        if (englishPart.endsWith(',')) {
+                            englishPart = englishPart.slice(0, -1).trim();
+                        }
+
+                        let finalPositive = "";
+                        let finalName = "";
+                        let finalDesc = "";
+
+                        if (englishBuffer.length > 0) {
+                            if (englishPart) {
+                                englishBuffer.push(englishPart);
+                            }
+                            finalPositive = englishBuffer.join('\n');
+                            finalName = chinesePart;
+                            finalDesc = `💡 ${chinesePart}`;
+                            englishBuffer = []; 
+                        } else {
+                            if (!englishPart) {
+                                finalName = chinesePart;
+                                finalPositive = "";
+                                finalDesc = `💡 ${chinesePart}`;
+                            } else {
+                                finalPositive = englishPart;
+                                finalName = chinesePart;
+                                finalDesc = `💡 ${chinesePart}`;
+                            }
+                        }
+
+                        results.push({
+                            id: Date.now() + Math.random(),
+                            name: finalName,
+                            positive: finalPositive,
+                            negative: "",
+                            desc: finalDesc
+                        });
+                    } else {
+                        englishBuffer.push(line);
                     }
                 }
+
+                if (englishBuffer.length > 0) {
+                    const combined = englishBuffer.join('\n');
+                    results.push({
+                        id: Date.now() + Math.random(),
+                        name: combined.split(',')[0].slice(0, 25) || "未命名导入",
+                        positive: combined,
+                        negative: "",
+                        desc: "💡 批量导入（未提供手账说明）"
+                    });
+                }
+
+                return results;
+            };
+
+            const parsedPromptsPreviewCount = computed(() => {
+                return parseBulkText(bulkImportText.value).length;
+            });
+
+            const openBulkImportModal = () => {
+                bulkImportText.value = '';
+                showBulkImportModal.value = true;
+            };
+
+            const executeBulkImport = async () => {
+                const parsedList = parseBulkText(bulkImportText.value);
+                if (parsedList.length === 0) return;
+
+                const targetCat = dbData.value.find(item => item.category === currentCategory.value);
+                if (!targetCat) return;
+
+                targetCat.prompts.push(...parsedList);
+                
+                showBulkImportModal.value = false;
+                bulkImportText.value = '';
+                await updateBackend();
+
+                if (parsedList.length > 0) {
+                    selectedActiveId.value = parsedList[0].id;
+                    inlineEditForm.value = { ...parsedList[0], _category: currentCategory.value };
+                    isInlineEditing.value = false;
+                }
+
+                triggerToast('批量导入成功', `成功向分类【${currentCategory.value}】中导入了 ${parsedList.length} 个提示词！`);
+            };
+
+            // 无阻塞自建弹窗切换提示词
+            const inspectPrompt = (item) => {
+                if (isInlineEditing.value && selectedActiveId.value !== item.id) {
+                    pendingSwitchItem.value = item;
+                    showSwitchConfirm.value = true; 
+                    return;
+                }
+                
                 selectedActiveId.value = item.id;
                 isInlineEditing.value = false;
                 inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
             };
 
+            const confirmSwitch = () => {
+                if (pendingSwitchItem.value) {
+                    const item = pendingSwitchItem.value;
+                    selectedActiveId.value = item.id;
+                    inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
+                }
+                isInlineEditing.value = false; 
+                showSwitchConfirm.value = false;
+                pendingSwitchItem.value = null;
+                triggerToast('已切换提示词', '放弃了上一个未保存的修改');
+            };
+
+            const cancelSwitch = () => {
+                showSwitchConfirm.value = false;
+                pendingSwitchItem.value = null;
+            };
+
             const selectCategory = (categoryName) => {
+                if (isInlineEditing.value) {
+                    // 如果正在编辑，则不能随意切分类，除非用户明确确认放弃
+                    pendingSwitchItem.value = { id: null }; // 标记特殊状态以在后面切换分类
+                    showSwitchConfirm.value = true;
+                    
+                    // 定义确认后的硬切换分类回调
+                    confirmSwitchForCategory = () => {
+                        searchQuery.value = '';
+                        currentCategory.value = categoryName;
+                        selectedActiveId.value = null;
+                        isInlineEditing.value = false;
+                        showSwitchConfirm.value = false;
+                    };
+                    return;
+                }
                 searchQuery.value = '';
                 currentCategory.value = categoryName;
                 selectedActiveId.value = null; 
                 isInlineEditing.value = false;
             };
 
-            // 数据加载
+            let confirmSwitchForCategory = () => {};
+
+            // 数据加载与保存
             const loadData = async () => {
                 const res = await fetch('/api/prompts');
                 const data = await res.json();
@@ -651,8 +989,14 @@
 
             const saveCategory = async () => {
                 const name = newCategoryName.value.trim();
-                if (!name) return alert('分类名称不能为空');
-                if (dbData.value.some(item => item.category === name)) return alert('该分类已存在！');
+                if (!name) {
+                    triggerToast('创建失败', '❌ 分类名称不能为空！');
+                    return;
+                }
+                if (dbData.value.some(item => item.category === name)) {
+                    triggerToast('创建失败', '❌ 该分类已经存在！');
+                    return;
+                }
 
                 dbData.value.push({ category: name, prompts: [] });
                 currentCategory.value = name;
@@ -662,10 +1006,62 @@
                 triggerToast('分类创建成功', `已添加并切换至: ${name}`);
             };
 
-            // 删除分类
-            const deleteCategory = async (catName) => {
-                if (!confirm(`确定要删除分类【${catName}】吗？\n警告：该分类下的所有提示词将永久丢失！`)) return;
+            // 重命名分类弹窗
+            const openRenameCategoryModal = (catName) => {
+                oldCategoryName.value = catName;
+                renameCategoryName.value = catName;
+                showRenameCategoryModal.value = true;
+                nextTick(() => { if (renameCatInput.value) renameCatInput.value.focus(); });
+            };
 
+            const saveRenameCategory = async () => {
+                const newName = renameCategoryName.value.trim();
+                const oldName = oldCategoryName.value;
+                if (!newName) {
+                    triggerToast('修改失败', '❌ 分类名称不能为空！');
+                    return;
+                }
+                if (newName === oldName) {
+                    showRenameCategoryModal.value = false;
+                    return;
+                }
+                if (dbData.value.some(item => item.category === newName)) {
+                    triggerToast('修改失败', '❌ 该新名字分类已存在！');
+                    return;
+                }
+
+                const found = dbData.value.find(item => item.category === oldName);
+                if (found) {
+                    found.category = newName;
+                }
+
+                selectedPrompts.value.forEach(p => {
+                    if (p.category === oldName) {
+                        p.category = newName;
+                    }
+                });
+
+                if (currentCategory.value === oldName) {
+                    currentCategory.value = newName;
+                }
+
+                if (inlineEditForm.value._category === oldName) {
+                    inlineEditForm.value._category = newName;
+                }
+
+                showRenameCategoryModal.value = false;
+                await updateBackend();
+                triggerToast('重命名成功', `已将分类【${oldName}】改名为【${newName}】`);
+            };
+
+            // 删除分类确认
+            const triggerDeleteCategory = (catName) => {
+                categoryToDelete.value = catName;
+                showDeleteCategoryConfirm.value = true;
+            };
+
+            const executeDeleteCategory = async () => {
+                const catName = categoryToDelete.value;
                 const idx = dbData.value.findIndex(item => item.category === catName);
                 if (idx !== -1) {
                     const catPromptIds = dbData.value[idx].prompts.map(p => p.id);
@@ -676,8 +1072,9 @@
                         currentCategory.value = dbData.value.length > 0 ? dbData.value[0].category : '';
                     }
                     selectedActiveId.value = null;
+                    showDeleteCategoryConfirm.value = false; 
                     await updateBackend();
-                    triggerToast('分类已删除', `已移除分类: ${catName}`);
+                    triggerToast('分类已删除', `已永久移除分类: ${catName}`);
                 }
             };
 
@@ -715,14 +1112,17 @@
                 return sorted;
             });
 
-            // 【添加提示词弹窗】
+            // 添加提示词弹窗
             const openAddPromptModal = () => {
                 tempPrompt.value = { name: '', positive: '', negative: '', desc: '' };
                 showPromptModal.value = true;
             };
 
             const saveNewPrompt = async () => {
-                if (!tempPrompt.value.name.trim()) return alert('请输入提示词名称！');
+                if (!tempPrompt.value.name.trim()) {
+                    triggerToast('添加失败', '❌ 提示词名称不能为空！');
+                    return;
+                }
                 const targetCat = dbData.value.find(item => item.category === currentCategory.value);
                 if (!targetCat) return;
 
@@ -740,14 +1140,16 @@
                 triggerToast('创建成功', `已选中新添加提示词: ${newObj.name}`);
             };
 
-            // 【内联二次编辑：保存】
+            // 内联编辑保存
             const saveInlineEdit = async () => {
-                if (!inlineEditForm.value.name.trim()) return alert('名称不能为空！');
+                if (!inlineEditForm.value.name.trim()) {
+                    triggerToast('保存失败', '❌ 提示词名称不能为空！');
+                    return;
+                }
 
                 const targetCat = dbData.value.find(item => item.category === inlineEditForm.value._category);
                 if (!targetCat) return;
 
-                // 更新左边数据源
                 const idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
                 if (idx !== -1) {
                     targetCat.prompts[idx].name = inlineEditForm.value.name;
@@ -756,7 +1158,6 @@
                     targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
                 }
 
-                // 同步右侧已选缓存
                 const sIdx = selectedPrompts.value.findIndex(p => p.id === inlineEditForm.value.id);
                 if (sIdx !== -1) {
                     selectedPrompts.value[sIdx].name = inlineEditForm.value.name;
@@ -770,7 +1171,6 @@
                 triggerToast('保存成功', `已更新: ${inlineEditForm.value.name}`);
             };
 
-            // 【内联二次编辑：取消】
             const cancelInlineEdit = () => {
                 const originalCat = dbData.value.find(item => item.category === inlineEditForm.value._category);
                 if (originalCat) {
@@ -782,9 +1182,15 @@
                 isInlineEditing.value = false;
             };
 
-            // 删除提示词
-            const deletePrompt = async (item) => {
-                if (!confirm(`确定要删除提示词【${item.name}】吗？`)) return;
+            // 删除提示词确认
+            const triggerDeletePrompt = (item) => {
+                promptToDelete.value = item;
+                showDeletePromptConfirm.value = true;
+            };
+
+            const executeDeletePrompt = async () => {
+                const item = promptToDelete.value;
+                if (!item) return;
 
                 const catName = item._category || currentCategory.value;
                 const targetCat = dbData.value.find(c => c.category === catName);
@@ -797,6 +1203,7 @@
                         isInlineEditing.value = false;
                     }
 
+                    showDeletePromptConfirm.value = false; 
                     await updateBackend();
                     triggerToast('提示词已删除', `已从【${catName}】中移除`);
                 }
@@ -822,6 +1229,38 @@
                 triggerToast('已清空', '已取消勾选所有提示词');
             };
 
+            // 【新增核心功能】：正负向提示词冲突静默检测与比对
+            const checkConflictAndWarn = () => {
+                // 1. 获取所有已选项目的正向与反向文本
+                const posRaw = sortedSelectedPrompts.value.map(item => item.positive).filter(Boolean).join(', ');
+                const negRaw = sortedSelectedPrompts.value.map(item => item.negative).filter(Boolean).join(', ');
+
+                if (!posRaw || !negRaw) return false;
+
+                // 2. 深度清洗函数（剥离权重如 :1.5, 去除各种中括号小括号花括号，转换为小写，去掉空格）
+                const cleanWord = (word) => {
+                    return word
+                        .replace(/:[0-9.]+/g, '') // 去除权重如 :1.2
+                        .replace(/[()\[\]{}]/g, '') // 去除括号 ( ) [ ] { }
+                        .trim()
+                        .toLowerCase();
+                };
+
+                // 3. 数组切分，做小写去空格清洗
+                const posSet = posRaw.split(',').map(cleanWord).filter(w => w.length > 0);
+                const negSet = negRaw.split(',').map(cleanWord).filter(w => w.length > 0);
+
+                // 4. 求相交的部分 (大小写忽略，权重忽略)
+                const conflicts = [...new Set(posSet.filter(w => negSet.includes(w)))];
+
+                if (conflicts.length > 0) {
+                    conflictWords.value = conflicts;
+                    showConflictModal.value = true; // 唤醒精美无阻塞警告卡片
+                    return true;
+                }
+                return false;
+            };
+
             // 拼合复制
             const compileAndCopy = (isPositive = true) => {
                 if (sortedSelectedPrompts.value.length === 0) {
@@ -839,9 +1278,15 @@
                     return;
                 }
 
+                // 复制到剪切板
                 copyToClipboard(result).then(() => {
                     const typeText = isPositive ? '正向' : '反向';
                     triggerToast(`复制${typeText}提示词成功`, result);
+                    
+                    // 【关键触发】：成功复制后，后台立刻静默开展正负提示词冲突检测
+                    setTimeout(() => {
+                        checkConflictAndWarn();
+                    }, 350); // 延时350ms唤醒，优化视觉体验
                 }).catch(err => {
                     triggerToast('复制失败', '请手动选中进行复制');
                 });
@@ -864,17 +1309,45 @@
                 toast,
                 showPromptModal,
                 tempPrompt,
+                showBulkImportModal,
+                bulkImportText,
+                parsedPromptsPreviewCount,
                 showCategoryModal,
                 newCategoryName,
                 catInput,
+                showRenameCategoryModal,
+                oldCategoryName,
+                renameCategoryName,
+                renameCatInput,
+                showDeleteCategoryConfirm,
+                categoryToDelete,
+                showDeletePromptConfirm,
+                promptToDelete,
+                showSwitchConfirm,
+                pendingSwitchItem,
+                showConflictModal,
+                conflictWords,
                 draggedIndex,
                 displayedPrompts,
                 initResize,
                 inspectPrompt,
+                confirmSwitch: () => {
+                    // 如果是普通提示词切换
+                    if (pendingSwitchItem.value && pendingSwitchItem.value.id !== null) {
+                        confirmSwitch();
+                    } else {
+                        // 如果是跨分类重定向硬切换
+                        confirmSwitchForCategory();
+                    }
+                },
+                cancelSwitch,
                 selectCategory,
                 openAddCategoryModal,
                 saveCategory,
-                deleteCategory,
+                openRenameCategoryModal,
+                saveRenameCategory,
+                triggerDeleteCategory,
+                executeDeleteCategory,
                 handleDragStart,
                 handleDragOver,
                 handleDragEnd,
@@ -882,11 +1355,14 @@
                 saveNewPrompt,
                 saveInlineEdit,
                 cancelInlineEdit,
-                deletePrompt,
+                triggerDeletePrompt,
+                executeDeletePrompt,
                 toggleSelect,
                 isPromptSelected,
                 clearAllSelected,
-                compileAndCopy
+                compileAndCopy,
+                openBulkImportModal,
+                executeBulkImport
             };
         }
     }).mount('#app');
