@@ -3,7 +3,7 @@
 chcp 65001 >nul
 
 title AI Prompt Hub 极速启动与修复工具
-cd /d "D:\PromptManager"
+cd /d "%~dp0"
 
 :: 1. 检测是否需要重装
 if not exist "node_modules\electron\dist\electron.exe" (

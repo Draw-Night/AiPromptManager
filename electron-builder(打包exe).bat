@@ -3,7 +3,7 @@
 chcp 65001 >nul
 title AI Prompt Hub - 自动化打包工具
 
-cd /d "D:\PromptManager"
+cd /d "%~dp0"
 
 echo [1/3] 正在为您配置国内淘宝镜像加速源（打包下载极速完成）...
 call npm config set registry https://registry.npmmirror.com
