@@ -29,7 +29,7 @@
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        /* 强制允许用户选择与输入 */
+        /* 允许用户选择 */
         .input-focus-allow {
             user-select: text !important;
             -webkit-user-select: text !important;
@@ -53,7 +53,7 @@
         </button>
     </header>
 
-    <!-- 2. 主体内容区（带拉伸功能） -->
+    <!-- 2. 主体内容区 -->
     <div class="flex flex-1 overflow-hidden">
         
         <!-- 【板块 1】：左侧分类列表 -->
@@ -121,7 +121,6 @@
             <!-- 头部操作栏 -->
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5 shrink-0">
                 <div class="flex items-center space-x-4">
-                    <!-- 【修改】：保持分类标题，搜索时只显示 (筛选中) -->
                     <h2 class="text-2xl font-bold text-slate-800">
                         {{ currentCategory }} 
                         <span v-if="searchQuery" class="text-sm font-normal text-indigo-500 bg-indigo-50 px-2 py-1 rounded ml-1.5">(筛选中)</span>
@@ -187,14 +186,14 @@
                             <input 
                                 type="checkbox" 
                                 :checked="isPromptSelected(item)"
-                                @click.stop="toggleSelect(item)"
+                                @click.stop
+                                @change="toggleSelect(item)"
                                 class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                             >
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center space-x-2">
                                     <span class="font-bold text-slate-800 text-sm truncate">{{ item.name }}</span>
                                     
-                                    <!-- 星标收藏按钮 ⭐ -->
                                     <button 
                                         @click.stop="toggleStar(item)"
                                         class="focus:outline-none transition-transform active:scale-95 duration-150 p-0.5 shrink-0"
@@ -205,7 +204,6 @@
                                     </button>
                                 </div>
                                 
-                                <!-- 手账中文说明预览 -->
                                 <p class="text-xs text-amber-600 font-medium truncate mt-1 flex items-center space-x-1">
                                     <span class="shrink-0 text-[10px]">📒</span>
                                     <span class="truncate">{{ item.desc || '暂无手账备忘' }}</span>
@@ -213,7 +211,7 @@
                             </div>
                         </div>
 
-                        <!-- 悬浮删除按钮 -->
+                        <!-- 悬浮删除 -->
                         <button 
                             @click.stop.prevent="triggerDeletePrompt(item)" 
                             class="absolute right-3 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-1 rounded transition-opacity"
@@ -237,18 +235,13 @@
 
                 <!-- 【板块 3】：右详情及编辑器 -->
                 <div class="flex-1 h-full flex flex-col min-w-[300px]">
-                    
-                    <!-- 1. 没有选中任何提示词时的占位显示 -->
                     <div v-if="!selectedActiveId" class="h-full border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 bg-white/50">
                         <span class="text-5xl mb-3">👈</span>
                         <p class="text-sm font-medium">请在左侧列表中点击选择提示词</p>
-                        <p class="text-xs text-slate-400 mt-1">选中后可在此查看完整内容并进行二次编辑</p>
                     </div>
 
-                    <!-- 2. 选中后的完整卡片详情 -->
                     <div v-else class="h-full bg-white border border-slate-200 rounded-xl p-4 flex flex-col overflow-hidden shadow-sm">
                         
-                        <!-- 详情栏头部 -->
                         <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-3 shrink-0">
                             <div class="flex items-center space-x-2 min-w-0 flex-1 mr-4">
                                 <span class="text-lg">📄</span>
@@ -259,19 +252,15 @@
                                     type="text" 
                                     class="border border-indigo-200 rounded px-2 py-1 text-sm font-bold text-slate-800 w-full focus:outline-none focus:ring-1 focus:ring-indigo-500 input-focus-allow"
                                 >
-                                
-                                <!-- 右侧详情页头部星标同步按钮 -->
                                 <button 
                                     @click="toggleStar(inlineEditForm)"
                                     class="focus:outline-none transition-transform active:scale-95 duration-150 shrink-0 ml-1"
-                                    title="设为常用/取消常用"
                                 >
                                     <span v-if="inlineEditForm.starred" class="text-amber-400 text-lg">★</span>
                                     <span v-else class="text-slate-300 hover:text-amber-400 text-lg transition-colors">☆</span>
                                 </button>
                             </div>
                             
-                            <!-- 编辑操作按钮组 -->
                             <div class="shrink-0">
                                 <button 
                                     v-if="!isInlineEditing" 
@@ -297,70 +286,33 @@
                             </div>
                         </div>
 
-                        <!-- 详情栏主体 -->
                         <div class="flex-1 flex flex-col space-y-3 overflow-hidden">
-                            
-                            <!-- 【上 2/3】 正向提示词区域 -->
                             <div class="flex-[2] flex flex-col min-h-0">
-                                <label class="text-xs font-bold text-emerald-700 mb-1 flex items-center space-x-1.5">
-                                    <span>🟢 正向提示词 (Positive)</span>
-                                </label>
-                                <div 
-                                    v-if="!isInlineEditing" 
-                                    class="flex-1 overflow-y-auto bg-emerald-50/30 text-slate-700 p-3 rounded-lg border border-emerald-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin animate-fade-in"
-                                >
+                                <label class="text-xs font-bold text-emerald-700 mb-1">🟢 正向提示词 (Positive)</label>
+                                <div v-if="!isInlineEditing" class="flex-1 overflow-y-auto bg-emerald-50/30 text-slate-700 p-3 rounded-lg border border-emerald-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin">
                                     {{ inlineEditForm.positive || '暂无内容' }}
                                 </div>
-                                <textarea 
-                                    v-else 
-                                    v-model="inlineEditForm.positive" 
-                                    class="flex-1 resize-none border border-emerald-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"
-                                    placeholder="请输入正向提示词..."
-                                ></textarea>
+                                <textarea v-else v-model="inlineEditForm.positive" class="flex-1 resize-none border border-emerald-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"></textarea>
                             </div>
 
-                            <!-- 【下 1/3】 反向提示词区域 -->
                             <div class="flex-[1] flex flex-col min-h-0">
-                                <label class="text-xs font-bold text-rose-700 mb-1 flex items-center space-x-1.5">
-                                    <span>🔴 反向提示词 (Negative)</span>
-                                </label>
-                                <div 
-                                    v-if="!isInlineEditing" 
-                                    class="flex-1 overflow-y-auto bg-rose-50/30 text-slate-700 p-3 rounded-lg border border-rose-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin animate-fade-in"
-                                >
+                                <label class="text-xs font-bold text-rose-700 mb-1">🔴 反向提示词 (Negative)</label>
+                                <div v-if="!isInlineEditing" class="flex-1 overflow-y-auto bg-rose-50/30 text-slate-700 p-3 rounded-lg border border-rose-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin">
                                     {{ inlineEditForm.negative || '暂无内容' }}
                                 </div>
-                                <textarea 
-                                    v-else 
-                                    v-model="inlineEditForm.negative" 
-                                    class="flex-1 resize-none border border-rose-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-rose-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"
-                                    placeholder="请输入反向提示词..."
-                                ></textarea>
+                                <textarea v-else v-model="inlineEditForm.negative" class="flex-1 resize-none border border-rose-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-rose-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"></textarea>
                             </div>
 
-                            <!-- 【最下】 手账编辑/展示区 -->
                             <div class="flex-[1] flex flex-col min-h-0 pt-1 border-t border-slate-100">
-                                <label class="text-xs font-bold text-amber-800 mb-1 flex items-center space-x-1.5">
-                                    <span>📖 画师手账备忘 (中文说明)</span>
-                                </label>
-                                <div 
-                                    v-if="!isInlineEditing" 
-                                    class="flex-1 overflow-y-auto bg-amber-50/30 text-slate-700 p-2.5 rounded-lg border border-amber-100 text-xs whitespace-pre-wrap select-text scrollbar-thin animate-fade-in"
-                                >
-                                    {{ inlineEditForm.desc || '该提示词暂无中文手账备忘，点击右上方编辑按钮可以添加说明。' }}
+                                <label class="text-xs font-bold text-amber-800 mb-1">📖 画师手账备忘 (中文说明)</label>
+                                <div v-if="!isInlineEditing" class="flex-1 overflow-y-auto bg-amber-50/30 text-slate-700 p-2.5 rounded-lg border border-amber-100 text-xs whitespace-pre-wrap select-text scrollbar-thin">
+                                    {{ inlineEditForm.desc || '暂无中文说明' }}
                                 </div>
-                                <textarea 
-                                    v-else 
-                                    v-model="inlineEditForm.desc" 
-                                    class="flex-1 resize-none border border-amber-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"
-                                    placeholder="在这里输入画师手账备忘..."
-                                ></textarea>
+                                <textarea v-else v-model="inlineEditForm.desc" class="flex-1 resize-none border border-amber-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white text-slate-700 scrollbar-thin input-focus-allow"></textarea>
                             </div>
-
                         </div>
 
                     </div>
-
                 </div>
 
             </div>
@@ -372,14 +324,13 @@
             class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
         ></div>
 
-        <!-- 【板块 4】：右侧栏 -->
+        <!-- 【板块 4】：右侧栏（已选/常用组合） -->
         <aside 
             :style="{ width: widthSelected + 'px' }" 
             class="bg-white p-4 flex flex-col justify-between shrink-0 h-full overflow-hidden"
         >
             <div class="flex flex-col h-full overflow-hidden">
                 
-                <!-- Tab 页切换头部 -->
                 <div class="flex border-b border-slate-100 mb-3 shrink-0">
                     <button 
                         @click="rightTab = 'selected'"
@@ -400,30 +351,25 @@
                     </button>
                 </div>
 
-                <!-- Tab 1: 已勾选清单工作区 -->
+                <!-- Tab 1: 已勾选清单 -->
                 <div v-if="rightTab === 'selected'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div class="flex justify-between items-center pb-2 mb-2 shrink-0">
-                        <span class="text-[11px] text-slate-400">当前勾选的单项提示词：</span>
-                        <button 
-                            v-if="selectedPrompts.length > 0" 
-                            @click="clearAllSelected" 
-                            class="text-xs text-rose-500 hover:text-rose-700 font-medium transition-all"
-                        >
-                            清空全部
+                        <span class="text-[11px] text-slate-400">当前勾选项目：</span>
+                        <button v-if="selectedPrompts.length > 0" @click="clearAllSelected" class="text-xs text-rose-500 hover:text-rose-700 font-medium">
+                            清空
                         </button>
                     </div>
 
-                    <!-- 选中的项目列表 -->
                     <div class="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
                         <div v-if="selectedPrompts.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
                             <span class="text-3xl">📥</span>
-                            <p class="text-xs">暂无勾选提示词</p>
+                            <p class="text-xs">暂无勾选</p>
                         </div>
                         
                         <div 
                             v-for="item in sortedSelectedPrompts" 
                             :key="item.id"
-                            class="flex justify-between items-start p-2.5 bg-slate-50 border border-slate-150 rounded-lg hover:border-indigo-200 transition-all group animate-fade-in"
+                            class="flex justify-between items-start p-2.5 bg-slate-50 border border-slate-150 rounded-lg hover:border-indigo-200 transition-all group"
                         >
                             <div class="flex-1 min-w-0 pr-2">
                                 <div class="flex items-center space-x-1.5">
@@ -432,45 +378,32 @@
                                     </span>
                                     <span class="font-bold text-sm text-slate-700 truncate">{{ item.name }}</span>
                                 </div>
-                                <p class="text-[11px] text-slate-400 truncate mt-1">
-                                    P: {{ item.positive || '-' }}
-                                </p>
                             </div>
-                            <button 
-                                @click="toggleSelect(item)" 
-                                class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50 transition-all shrink-0"
-                            >
-                                ✕
-                            </button>
+                            <button @click="toggleSelect(item)" class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50">✕</button>
                         </div>
                     </div>
 
-                    <!-- 保存为新组合按钮 -->
                     <div v-if="selectedPrompts.length > 0" class="pt-3 border-t shrink-0">
-                        <button 
-                            @click="openSavePresetModal"
-                            class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center space-x-1"
-                        >
-                            <span>💾 将当前勾选打包为常用组合</span>
+                        <button @click="openSavePresetModal" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-sm">
+                            💾 将勾选打包为常用组合
                         </button>
                     </div>
                 </div>
 
-                <!-- Tab 2: 预设组合管理面板 -->
+                <!-- Tab 2: 常用预设 -->
                 <div v-if="rightTab === 'presets'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div class="text-[11px] text-slate-400 pb-2 mb-2 shrink-0">您已保存的经典提示词搭配：</div>
+                    <div class="text-[11px] text-slate-400 pb-2 mb-2 shrink-0">经典搭配列表：</div>
                     
                     <div class="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
                         <div v-if="presets.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
                             <span class="text-3xl">💾</span>
-                            <p class="text-xs">暂无常用组合，请先在已选清单中保存</p>
+                            <p class="text-xs">暂无常用组合</p>
                         </div>
 
-                        <!-- 预设卡片列表 -->
                         <div 
                             v-for="preset in presets" 
                             :key="preset.id"
-                            class="p-3 bg-amber-50/40 hover:bg-amber-50/80 border border-amber-200/70 rounded-xl transition-all relative group flex flex-col justify-between h-28 animate-fade-in"
+                            class="p-3 bg-amber-50/40 hover:bg-amber-50/80 border border-amber-200/70 rounded-xl transition-all relative flex flex-col justify-between h-28"
                         >
                             <div>
                                 <div class="flex justify-between items-start">
@@ -478,40 +411,24 @@
                                         {{ preset.name }}
                                     </span>
                                     <span class="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold shrink-0">
-                                        {{ preset.promptIds.length }} 个提示词
+                                        {{ preset.promptIds.length }} 个词
                                     </span>
                                 </div>
-                                <p class="text-[10px] text-slate-400 truncate mt-1 leading-relaxed" :title="getPresetNamesPreview(preset)">
+                                <p class="text-[10px] text-slate-400 truncate mt-1" :title="getPresetNamesPreview(preset)">
                                     包含: {{ getPresetNamesPreview(preset) }}
                                 </p>
                             </div>
 
-                            <!-- 预设卡片底栏功能按钮 -->
                             <div class="flex justify-between items-center pt-2 mt-2 border-t border-amber-200/50">
                                 <div class="flex space-x-2">
-                                    <button 
-                                        @click="applyPreset(preset, false)"
-                                        class="text-[11px] bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded shadow-sm transition-all"
-                                        title="直接应用此组合"
-                                    >
+                                    <button @click="applyPreset(preset, false)" class="text-[11px] bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded">
                                         ⚡ 应用
                                     </button>
-                                    <button 
-                                        @click="applyPreset(preset, true)"
-                                        class="text-[11px] bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold px-2.5 py-1 rounded transition-all"
-                                        title="追加此组合"
-                                    >
+                                    <button @click="applyPreset(preset, true)" class="text-[11px] bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold px-2.5 py-1 rounded">
                                         ➕ 追加
                                     </button>
                                 </div>
-                                
-                                <button 
-                                    @click.stop="triggerDeletePreset(preset)"
-                                    class="text-xs text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
-                                    title="删除此常用组合"
-                                >
-                                    ✕
-                                </button>
+                                <button @click.stop="triggerDeletePreset(preset)" class="text-xs text-slate-400 hover:text-rose-600 p-1">✕</button>
                             </div>
                         </div>
                     </div>
@@ -522,36 +439,33 @@
 
     </div>
 
-    <!-- 3. 底部：合并复制栏 -->
+    <!-- 3. 底部复制区域 -->
     <footer class="bg-white border-t border-slate-200 p-4 flex justify-between items-center shrink-0 z-10">
         <div class="flex items-center space-x-6 text-sm text-slate-500">
             <div>已选中 <span class="font-bold text-indigo-600">{{ selectedPrompts.length }}</span> 个提示词</div>
-            <label class="flex items-center space-x-2 cursor-pointer border-l border-slate-200 pl-6 py-1 select-none" title="启用后，各个卡片的英文提示词拼合时会通过空行上下排版，便于大段落阅读">
+            <label class="flex items-center space-x-2 cursor-pointer border-l border-slate-200 pl-6 py-1 select-none">
                 <input 
                     type="checkbox" 
                     v-model="useDoubleNewline"
                     @change="saveNewlineOption"
-                    class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                    class="w-4 h-4 rounded border-slate-300 text-indigo-600 cursor-pointer shrink-0"
                 >
-                <span class="text-xs text-slate-600 font-semibold">✨ 空行分隔拼合 (段落清晰)</span>
+                <span class="text-xs text-slate-600 font-semibold">✨ 空行分隔拼合</span>
             </label>
         </div>
 
         <div class="flex space-x-4">
-            <button @click="compileAndCopy(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all">
+            <button @click="compileAndCopy(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-md transition-all">
                 ✨ 复制正向提示词 (Positive)
             </button>
-            <button @click="compileAndCopy(false)" class="bg-rose-600 hover:bg-rose-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all">
+            <button @click="compileAndCopy(false)" class="bg-rose-600 hover:bg-rose-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-md transition-all">
                 🚫 复制反向提示词 (Negative)
             </button>
         </div>
     </footer>
 
-    <!-- 4. 浮动提示框 (Toast) -->
-    <div 
-        v-if="toast.show" 
-        class="fixed bottom-24 right-6 bg-slate-900/95 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transition-all duration-300 transform translate-y-0 z-50 border border-slate-700 backdrop-blur"
-    >
+    <!-- 4. 浮动提示框 -->
+    <div v-if="toast.show" class="fixed bottom-24 right-6 bg-slate-900/95 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 duration-300 z-50 border border-slate-700">
         <span class="text-emerald-400 text-lg">✔</span>
         <div class="flex flex-col">
             <span class="text-sm font-bold">{{ toast.title }}</span>
@@ -559,6 +473,7 @@
         </div>
     </div>
 
+    <!-- 弹窗组件（分类增加、预设增加、导入去重等） -->
     <!-- 弹窗1：添加提示词 -->
     <div v-if="showPromptModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
@@ -578,12 +493,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">备注手账（中文说明/备忘录）</label>
-                    <textarea v-model="tempPrompt.desc" rows="2" placeholder="推荐Lora、开启权重等心得..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"></textarea>
+                    <textarea v-model="tempPrompt.desc" rows="2" placeholder="推荐Lora等..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"></textarea>
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showPromptModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
-                <button @click="saveNewPrompt" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium font-bold">保存并查看</button>
+                <button @click="showPromptModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                <button @click="saveNewPrompt" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-bold">保存并查看</button>
             </div>
         </div>
     </div>
@@ -595,340 +510,172 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">分类名称</label>
-                    <input 
-                        v-model="newCategoryName" 
-                        type="text" 
-                        ref="catInput"
-                        placeholder="例如：发型、背景、光效" 
-                        class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
-                        @keyup.enter="saveCategory"
-                    >
+                    <input v-model="newCategoryName" type="text" ref="catInput" placeholder="发型、背景等..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow" @keyup.enter="saveCategory">
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold font-bold">取消</button>
-                <button @click="saveCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium font-bold font-bold">确认创建</button>
+                <button @click="showCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                <button @click="saveCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-bold">确认创建</button>
             </div>
         </div>
     </div>
 
     <!-- 弹窗3：批量导入提示词 -->
     <div v-if="showBulkImportModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-2xl h-[580px] flex flex-col shadow-2xl animate-fade-in">
+        <div class="bg-white rounded-xl p-6 w-full max-w-2xl h-[580px] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center pb-3 border-b mb-4">
-                <h3 class="text-lg font-bold text-indigo-900 flex items-center space-x-1.5">
-                    <span>📥 批量导入提示词</span>
-                    <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-normal">塞入：{{ currentCategory }}</span>
-                </h3>
-                <button @click="showBulkImportModal = false" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                <h3 class="text-lg font-bold text-indigo-900">📥 批量导入提示词 (至: {{ currentCategory }})</h3>
+                <button @click="showBulkImportModal = false" class="text-slate-400">✕</button>
             </div>
-            
-            <p class="text-xs text-slate-400 mb-3 leading-relaxed">
-                直接在下方文本框中粘贴多行文本。系统会自动识别中英文并自动排版。
-            </p>
-            
             <div class="flex-1 min-h-0 mb-4">
-                <textarea 
-                    v-model="bulkImportText" 
-                    placeholder="在这里粘贴您的提示词..."
-                    class="w-full h-full border border-slate-200 rounded-xl p-4 text-xs font-mono focus:outline-indigo-500 scrollbar-thin resize-none input-focus-allow"
-                ></textarea>
+                <textarea v-model="bulkImportText" placeholder="粘贴您的提示词..." class="w-full h-full border border-slate-200 rounded-xl p-4 text-xs font-mono focus:outline-indigo-500 scrollbar-thin resize-none input-focus-allow"></textarea>
             </div>
-            
             <div class="flex justify-between items-center pt-2">
-                <div class="text-xs text-indigo-600 font-semibold">
-                    {{ parsedPromptsPreviewCount > 0 ? `✨ 智能算法已识别到 ${parsedPromptsPreviewCount} 个提示词项目` : '等待粘贴内容...' }}
-                </div>
+                <div class="text-xs text-indigo-600 font-semibold">识别到 {{ parsedPromptsPreviewCount }} 个提示词项目</div>
                 <div class="flex space-x-3">
-                    <button @click="showBulkImportModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
-                    <button 
-                        @click="executeBulkImport" 
-                        :disabled="parsedPromptsPreviewCount === 0"
-                        class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md font-bold"
-                    >
-                        确认导入
-                    </button>
+                    <button @click="showBulkImportModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                    <button @click="executeBulkImport" :disabled="parsedPromptsPreviewCount === 0" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 font-bold">确认导入</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗4：分类重命名 ✏️ -->
+    <!-- 弹窗4：分类重命名 -->
     <div v-if="showRenameCategoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
-            <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1">
-                <span>✏️ 分类重命名</span>
-            </h3>
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold mb-4 text-indigo-900">✏️ 分类重命名</h3>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-500 mb-1">将【{{ oldCategoryName }}】修改为：</label>
-                    <input 
-                        v-model="renameCategoryName" 
-                        type="text" 
-                        ref="renameCatInput"
-                        placeholder="输入新的分类名称" 
-                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
-                        @keyup.enter="saveRenameCategory"
-                    >
+                    <input v-model="renameCategoryName" type="text" ref="renameCatInput" placeholder="新名称" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow" @keyup.enter="saveRenameCategory">
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showRenameCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="saveRenameCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium font-bold">保存修改</button>
+                <button @click="showRenameCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-medium">取消</button>
+                <button @click="saveRenameCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-bold">保存修改</button>
             </div>
         </div>
     </div>
 
     <!-- 弹窗5：确认删除分类 -->
     <div v-if="showDeleteCategoryConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-rose-100 animate-fade-in">
-            <div class="flex items-center space-x-3 mb-3 text-rose-600">
-                <span class="text-2xl">⚠️</span>
-                <h3 class="text-lg font-bold">警告：确定删除分类吗？</h3>
-            </div>
-            <p class="text-sm text-slate-600 leading-relaxed mb-6">
-                您即将删除分类 <span class="font-bold text-slate-900">【{{ categoryToDelete }}】</span>。<br>
-                删除后，该分类下所有提示词将永久丢失。该操作无法撤销！
-            </p>
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-rose-600">⚠ 确定删除分类吗？</h3>
+            <p class="text-sm text-slate-600 mb-6 mt-2">删除【{{ categoryToDelete }}】分类下所有数据将永久丢失！</p>
             <div class="flex justify-end space-x-3">
-                <button @click="showDeleteCategoryConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
-                <button @click="executeDeleteCategory" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow font-bold">确认永久删除</button>
+                <button @click="showDeleteCategoryConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                <button @click="executeDeleteCategory" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700">确认永久删除</button>
             </div>
         </div>
     </div>
 
     <!-- 弹窗6：确认删除提示词 -->
     <div v-if="showDeletePromptConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-rose-100 animate-fade-in">
-            <div class="flex items-center space-x-3 mb-3 text-rose-600">
-                <span class="text-2xl">🗑️</span>
-                <h3 class="text-lg font-bold">确定删除该提示词吗？</h3>
-            </div>
-            <p class="text-sm text-slate-600 leading-relaxed mb-6">
-                确定要从数据库中删除提示词 <span class="font-bold text-slate-900">【{{ promptToDelete?.name }}】</span> 吗？
-            </p>
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-rose-600">🗑️ 确定删除提示词吗？</h3>
+            <p class="text-sm text-slate-600 mb-6 mt-2">确定删除【{{ promptToDelete?.name }}】吗？</p>
             <div class="flex justify-end space-x-3">
-                <button @click="showDeletePromptConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
-                <button @click="executeDeletePrompt" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow font-bold">删除</button>
+                <button @click="showDeletePromptConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                <button @click="executeDeletePrompt" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700">确认删除</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗7：未保存强制切换提示词 -->
-    <div v-if="showSwitchConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-amber-100">
-            <div class="flex items-center space-x-3 mb-3 text-amber-600">
-                <span class="text-2xl">⚠️</span>
-                <h3 class="text-lg font-bold">内容尚未保存！</h3>
-            </div>
-            <p class="text-sm text-slate-600 leading-relaxed mb-6">
-                您当前正在编辑提示词，直接切换列表将会<span class="font-bold text-rose-600">丢失所有未保存的修改</span>！<br>
-                确定要放弃当前修改并强行切换吗？
-            </p>
+    <!-- 弹窗7：放弃未保存切换确认 -->
+    <div v-if="showSwitchConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-600">⚠️ 内容尚未保存！</h3>
+            <p class="text-sm text-slate-600 mb-6 mt-2">直接切换列表将丢失所有修改！</p>
             <div class="flex justify-end space-x-3">
-                <button @click="cancelSwitch" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">继续编辑</button>
-                <button @click="handleConfirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 shadow font-bold">放弃修改并切换</button>
+                <button @click="cancelSwitch" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">继续编辑</button>
+                <button @click="handleConfirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold">放弃并切换</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗8：正/负提示词冲突检测提示面板 -->
-    <div v-if="showConflictModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl border border-amber-100">
-            <div class="flex items-center space-x-3 mb-4 text-amber-600">
-                <span class="text-3xl">⚠️</span>
-                <div>
-                    <h3 class="text-lg font-bold text-slate-800">复制成功，但发现正反冲突词！</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">同一提示词在正负词库中同时存在，将严重干扰AI生成效果</p>
-                </div>
+    <!-- 弹窗8：正反冲突 -->
+    <div v-if="showConflictModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-600">⚠️ 发现正反冲突词！</h3>
+            <p class="text-xs text-slate-400 mb-4">同一提示词在正负词库中同时存在，将干扰AI生成：</p>
+            <div class="bg-slate-50 p-4 mb-5 rounded-lg border border-slate-150 max-h-40 overflow-y-auto">
+                <span v-for="word in conflictWords" class="inline-block text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded m-1">{{ word }}</span>
             </div>
-            
-            <div class="bg-slate-50 rounded-xl p-4 mb-5 border border-slate-150 max-h-60 overflow-y-auto scrollbar-thin">
-                <div class="text-xs font-bold text-slate-500 mb-2.5">💥 发生重合冲突的英文词：</div>
-                <div class="flex flex-wrap gap-2">
-                    <span 
-                        v-for="word in conflictWords" 
-                        :key="word" 
-                        class="text-xs font-mono font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md border border-amber-200 select-all"
-                    >
-                        {{ word }}
-                    </span>
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center">
-                <span class="text-[11px] text-slate-400">💡 提示：双击上面词条可快速手动复制</span>
-                <button 
-                    @click="showConflictModal = false" 
-                    class="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 shadow font-bold"
-                >
-                    我知道了
-                </button>
+            <div class="flex justify-end">
+                <button @click="showConflictModal = false" class="px-5 py-2 bg-slate-950 text-white rounded-lg text-sm font-bold">我知道了</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗9：导入排重与冲突处理面板 -->
+    <!-- 弹窗9：导入排重冲突处理 -->
     <div v-if="showImportDuplicateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl border border-amber-100 animate-fade-in">
-            
-            <div class="flex items-center space-x-3 pb-3 border-b mb-4 shrink-0 text-amber-600">
-                <span class="text-3xl">⚠️</span>
-                <div>
-                    <h3 class="text-lg font-bold text-slate-800">导入提示：检测到数据重合！</h3>
-                    <p class="text-xs text-slate-500">发现有项目与本地数据库中的提示词【名字】或【内容】存在重复</p>
-                </div>
-            </div>
-
-            <!-- 冲突内容列表滚动区 -->
-            <div class="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 mb-5 scrollbar-thin">
-                <div 
-                    v-for="(item, idx) in importConflictItems" 
-                    :key="idx"
-                    class="p-3 rounded-lg bg-amber-50/50 border border-amber-200 flex flex-col justify-between"
-                >
-                    <div class="flex justify-between items-start">
-                        <span class="text-sm font-bold text-slate-800">{{ item.name }}</span>
-                        <span class="text-[10px] bg-rose-100 text-rose-700 border border-rose-200 font-bold px-2 py-0.5 rounded-full shrink-0">
-                            {{ item.conflictReason }}
-                        </span>
-                    </div>
-                    <div class="text-[11px] text-slate-400 truncate mt-1.5">
-                        <span class="font-bold text-amber-700">P:</span> {{ item.positive || '无' }}
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-600">⚠️ 导入提示：检测到数据重复</h3>
+            <div class="flex-1 min-h-0 overflow-y-auto space-y-2 mt-4 mb-4 scrollbar-thin">
+                <div v-for="(item, idx) in importConflictItems" :key="idx" class="p-3 bg-amber-50/50 border border-amber-200 rounded-lg">
+                    <div class="flex justify-between font-bold text-sm">
+                        <span>{{ item.name }}</span>
+                        <span class="text-xs text-rose-600">{{ item.conflictReason }}</span>
                     </div>
                 </div>
             </div>
-
-            <!-- 控制区底栏 -->
-            <div class="pt-3 border-t shrink-0 flex flex-col space-y-3">
-                <div class="text-xs text-slate-500 text-center">
-                    冲突项目：<span class="text-amber-600 font-bold">{{ importConflictItems.length }} 条</span> | 
-                    无冲突安全项：<span class="text-emerald-600 font-bold">{{ importCleanItems.length }} 条</span>
-                </div>
-                
+            <div class="pt-3 border-t flex flex-col space-y-3 shrink-0">
                 <div class="grid grid-cols-3 gap-3">
-                    <button 
-                        @click="abortImportAndReturn" 
-                        class="px-3 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-semibold text-slate-600 transition-colors"
-                    >
-                        ✕ 返回修改
-                    </button>
-                    <button 
-                        @click="executeImportCleanOnly" 
-                        :disabled="importCleanItems.length === 0"
-                        class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow transition-all disabled:opacity-50"
-                    >
-                        🟢 仅导入无冲突项
-                    </button>
-                    <button 
-                        @click="executeImportAllForce" 
-                        class="px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold shadow transition-all"
-                    >
-                        ⚠️ 强行全部导入
-                    </button>
+                    <button @click="abortImportAndReturn" class="px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-bold">✕ 返回修改</button>
+                    <button @click="executeImportCleanOnly" :disabled="importCleanItems.length === 0" class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold">🟢 仅导入无冲突项</button>
+                    <button @click="executeImportAllForce" class="px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-bold">⚠️ 强行导入全部</button>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- 弹窗10：保存为常用预设组合模态框 💾 -->
+    <!-- 弹窗10：保存为常用预设 -->
     <div v-if="showSavePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in border border-indigo-100">
-            <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1.5">
-                <span>💾 保存为常用预设组合</span>
-            </h3>
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold mb-4 text-indigo-900">💾 保存为常用预设组合</h3>
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1.5">当前已勾选 {{ selectedPrompts.length }} 个词，请输入预设名称：</label>
-                    <input 
-                        v-model="newPresetName" 
-                        type="text" 
-                        ref="presetInput"
-                        placeholder="例如：冷艳古风、赛博雏田固定装" 
-                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
-                        @keyup.enter="saveActiveAsPreset"
-                    >
+                    <input v-model="newPresetName" type="text" ref="presetInput" placeholder="组合名称" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow" @keyup.enter="saveActiveAsPreset">
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showSavePresetModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="saveActiveAsPreset" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-bold shadow">确认保存</button>
+                <button @click="showSavePresetModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                <button @click="saveActiveAsPreset" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">确认保存</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗11：确认删除预设组合弹窗 ✕ -->
-    <div v-if="showDeletePresetConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-rose-100">
-            <div class="flex items-center space-x-3 mb-3 text-rose-600">
-                <span class="text-2xl">🗑️</span>
-                <h3 class="text-lg font-bold">确定要删除该常用组合吗？</h3>
-            </div>
-            <p class="text-sm text-slate-600 leading-relaxed mb-6">
-                确定要删除常用组合 <span class="font-bold text-slate-900">【{{ presetToDelete?.name }}】</span> 吗？删除后无法恢复！
-            </p>
+    <!-- 弹窗11：确认删除预设组合 -->
+    <div v-if="showDeletePresetConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-rose-600">🗑️ 确定删除常用组合吗？</h3>
+            <p class="text-sm text-slate-600 mb-6 mt-2">删除预设【{{ presetToDelete?.name }}】后无法恢复！</p>
             <div class="flex justify-end space-x-3">
-                <button @click="showDeletePresetConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
-                <button @click="executeDeletePreset" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 shadow font-bold">确认删除</button>
+                <button @click="showDeletePresetConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
+                <button @click="executeDeletePreset" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold">确认删除</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗12：高颜值“提示词权重去重对比报告” 📊 -->
-    <div v-if="showDupMergeModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-        <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl border border-indigo-100">
-            
-            <div class="flex items-center space-x-3 pb-3 border-b mb-4 shrink-0 text-indigo-600">
-                <span class="text-3xl">📊</span>
-                <div>
-                    <h3 class="text-lg font-bold text-slate-800">复制成功！已自动完成权重排重</h3>
-                    <p class="text-xs text-slate-400">检测到并行的多项冲突词，系统已自动保留了[权重最大]的唯一项</p>
-                </div>
-            </div>
-
-            <!-- 去重对比列表 -->
-            <div class="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 mb-5 scrollbar-thin">
-                <div 
-                    v-for="conflict in dupMergeConflicts" 
-                    :key="conflict.word"
-                    class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col space-y-2.5 hover:border-indigo-300 transition-all"
-                >
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs font-extrabold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md uppercase tracking-wider font-mono">
-                            {{ conflict.word }}
-                        </span>
-                        <span class="text-[10px] text-slate-400">合并了 {{ conflict.items.length }} 处重复</span>
-                    </div>
-
-                    <!-- 具体的去重对比链条 -->
-                    <div class="space-y-1.5 pl-1">
-                        <div 
-                            v-for="item in conflict.items" 
-                            :key="item.original"
-                            class="flex items-center justify-between text-xs"
-                        >
-                            <span :class="['font-mono', item.isWinner ? 'text-emerald-600 font-bold' : 'text-slate-400 line-through']">
-                                {{ item.original }}
-                            </span>
-                            <span :class="['text-[10px] font-bold px-1.5 py-0.2 rounded shrink-0', item.isWinner ? 'bg-emerald-50 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-400']">
-                                权重: {{ item.weight.toFixed(2) }} {{ item.isWinner ? '★ 保留' : '已丢弃' }}
-                            </span>
+    <!-- 弹窗12：排重报告 -->
+    <div v-if="showDupMergeModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl">
+            <h3 class="text-lg font-bold text-indigo-600">📊 复制成功！已自动完成权重合并排重</h3>
+            <div class="flex-1 min-h-0 overflow-y-auto space-y-3 mt-4 mb-4 scrollbar-thin">
+                <div v-for="conflict in dupMergeConflicts" :key="conflict.word" class="p-4 bg-slate-50 border rounded-xl flex flex-col space-y-2">
+                    <span class="text-xs font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md w-max font-mono">{{ conflict.word }}</span>
+                    <div class="space-y-1 pl-1">
+                        <div v-for="item in conflict.items" :key="item.original" class="flex justify-between text-xs">
+                            <span :class="['font-mono', item.isWinner ? 'text-emerald-600 font-bold' : 'text-slate-400 line-through']">{{ item.original }}</span>
+                            <span :class="['text-[10px] px-1.5 py-0.2 rounded', item.isWinner ? 'bg-emerald-50 text-emerald-700 font-bold' : 'bg-slate-100 text-slate-400']">权重: {{ item.weight.toFixed(2) }} {{ item.isWinner ? '★ 保留' : '丢弃' }}</span>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div class="flex justify-between items-center shrink-0 pt-2">
-                <span class="text-[11px] text-slate-400">💡 提示：精简后的标准英文已成功写入剪贴板</span>
-                <button 
-                    @click="showDupMergeModal = false" 
-                    class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md font-bold"
-                >
-                    好的，继续作画
-                </button>
+            <div class="flex justify-end shrink-0 pt-2 border-t">
+                <button @click="showDupMergeModal = false" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">继续作画</button>
             </div>
-
         </div>
     </div>
 
@@ -947,16 +694,16 @@
             const searchQuery = ref('');
 
             // 自主拉伸宽度
-            const widthCategory = ref(parseInt(localStorage.getItem('widthCategory')) || 224);
-            const widthList = ref(parseInt(localStorage.getItem('widthList')) || 320);
-            const widthSelected = ref(parseInt(localStorage.getItem('widthSelected')) || 320);
+            const widthCategory = ref(224);
+            const widthList = ref(320);
+            const widthSelected = ref(320);
 
             // 空行拼合配置状态
-            const useDoubleNewline = ref(localStorage.getItem('useDoubleNewline') === 'true');
+            const useDoubleNewline = ref(false);
 
-            // 常用组合数据持久化逻辑
+            // 常用组合数据
             const rightTab = ref('selected'); 
-            const presets = ref(JSON.parse(localStorage.getItem('promptPresets') || '[]'));
+            const presets = ref([]);
             const showSavePresetModal = ref(false);
             const newPresetName = ref('');
             const presetInput = ref(null);
@@ -1012,7 +759,7 @@
             const showDeletePresetConfirm = ref(false);
             const presetToDelete = ref(null);
 
-            // 提示词复制去重对比报告模态框状态
+            // 提示词复制去重对比报告
             const showDupMergeModal = ref(false);
             const dupMergeConflicts = ref([]); 
 
@@ -1027,19 +774,59 @@
                 setTimeout(() => { toast.value.show = false; }, 2500);
             };
 
-            // 空行拼合状态切换保存
-            const saveNewlineOption = () => {
-                localStorage.setItem('useDoubleNewline', useDoubleNewline.value);
-                triggerToast(useDoubleNewline.value ? '✨ 已开启段落排版' : '⚡ 已恢复单行流排版', '点击复制按钮体验新排版样式');
+            // 获取本地保存的配置项
+            const loadSettings = async () => {
+                try {
+                    const res = await fetch('/api/settings');
+                    const settings = await res.json();
+                    widthCategory.value = settings.widthCategory ?? 224;
+                    widthList.value = settings.widthList ?? 320;
+                    widthSelected.value = settings.widthSelected ?? 320;
+                    useDoubleNewline.value = settings.useDoubleNewline ?? false;
+                } catch(e) {}
             };
 
-            // 自动清除英文输入框中的“全角逗号、全角括号”
+            // 发送配置至本地物理硬盘保存
+            const saveSettings = async () => {
+                const payload = {
+                    widthCategory: widthCategory.value,
+                    widthList: widthList.value,
+                    widthSelected: widthSelected.value,
+                    useDoubleNewline: useDoubleNewline.value
+                };
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            };
+
+            // 加载常用组合预设
+            const loadPresets = async () => {
+                try {
+                    const res = await fetch('/api/presets');
+                    presets.value = await res.json();
+                } catch(e) {}
+            };
+
+            const savePresets = async () => {
+                await fetch('/api/presets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(presets.value)
+                });
+            };
+
+            // 空行拼合状态切换保存
+            const saveNewlineOption = async () => {
+                await saveSettings();
+                triggerToast(useDoubleNewline.value ? '✨ 已开启段落排版' : '⚡ 已恢复单行排版', '再次复制提示词即可体验效果');
+            };
+
+            // 清洗全角符号
             const sanitizePrompts = (text) => {
                 if (!text) return "";
-                return text
-                    .replace(/，/g, ',')  
-                    .replace(/（/g, '(')  
-                    .replace(/）/g, ')'); 
+                return text.replace(/，/g, ',').replace(/（/g, '(').replace(/）/g, ')'); 
             };
 
             // 弹性拉伸控制
@@ -1053,60 +840,50 @@
                 const doDrag = (e) => {
                     const deltaX = e.clientX - startX;
                     if (panel === 'category') {
-                        const newW = startW_Category + deltaX;
-                        widthCategory.value = Math.max(160, Math.min(380, newW));
+                        widthCategory.value = Math.max(160, Math.min(380, startW_Category + deltaX));
                     } else if (panel === 'list') {
-                        const newW = startW_List + deltaX;
-                        widthList.value = Math.max(200, Math.min(550, newW));
+                        widthList.value = Math.max(200, Math.min(550, startW_List + deltaX));
                     } else if (panel === 'selected') {
-                        const newW = startW_Selected - deltaX;
-                        widthSelected.value = Math.max(200, Math.min(450, newW));
+                        widthSelected.value = Math.max(200, Math.min(450, startW_Selected - deltaX));
                     }
                 };
 
-                const stopDrag = () => {
+                const stopDrag = async () => {
                     document.removeEventListener('mousemove', doDrag);
                     document.removeEventListener('mouseup', stopDrag);
-                    localStorage.setItem('widthCategory', widthCategory.value);
-                    localStorage.setItem('widthList', widthList.value);
-                    localStorage.setItem('widthSelected', widthSelected.value);
+                    await saveSettings(); // 保存配置至本地
                 };
 
                 document.addEventListener('mousemove', doDrag);
                 document.addEventListener('mouseup', stopDrag);
             };
 
-            // 勾选状态识别
+            // 精准勾选状态识别
             const isPromptSelected = (item) => {
                 return selectedPrompts.value.some(p => p.id === item.id);
             };
 
-            // 【彻底重构】：将全局搜索修改为“分类内局部搜索”，彻底杜绝动作栏在人名搜索下乱入的 Bug
+            // 【彻底重构】：锁定分类内局部搜索，并消除直接重构对 Vue 树渲染的冲击
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
-                
-                // 1. 强制提取“当前分类”下的提示词，将其作为检索数据源
                 const found = dbData.value.find(item => item.category === currentCategory.value);
-                const currentPrompts = found ? found.prompts.map(p => ({ ...p, _category: currentCategory.value })) : [];
+                const currentPrompts = found ? found.prompts : [];
 
                 let baseResults = [];
-                
                 if (!query) {
-                    // 无搜索：显示当前分类所有词
                     baseResults = currentPrompts;
                 } else {
-                    // 局部搜索：仅在当前分类的词组下检索名称、正向、反向及手账
-                    baseResults = currentPrompts.filter(promptItem => {
+                    baseResults = currentPrompts.filter(p => {
                         return (
-                            promptItem.name.toLowerCase().includes(query) || 
-                            (promptItem.positive && promptItem.positive.toLowerCase().includes(query)) ||
-                            (promptItem.negative && promptItem.negative.toLowerCase().includes(query)) ||
-                            (promptItem.desc && promptItem.desc.toLowerCase().includes(query))
+                            p.name.toLowerCase().includes(query) || 
+                            (p.positive && p.positive.toLowerCase().includes(query)) ||
+                            (p.negative && p.negative.toLowerCase().includes(query)) ||
+                            (p.desc && p.desc.toLowerCase().includes(query))
                         );
                     });
                 }
                 
-                // 2. 局部检索完毕后，进行三级高精置顶排布
+                // 仅在这里计算星标排序，不再通过 map 动态创造解构项破坏 VNode
                 return [...baseResults].sort((a, b) => {
                     const aSel = isPromptSelected(a) ? 1 : 0;
                     const bSel = isPromptSelected(b) ? 1 : 0;
@@ -1149,23 +926,15 @@
                         let finalDesc = "";
 
                         if (englishBuffer.length > 0) {
-                            if (englishPart) {
-                                englishBuffer.push(englishPart);
-                            }
+                            if (englishPart) englishBuffer.push(englishPart);
                             finalPositive = englishBuffer.join('\n');
                             finalName = chinesePart;
                             finalDesc = `💡 ${chinesePart}`;
                             englishBuffer = []; 
                         } else {
-                            if (!englishPart) {
-                                finalName = chinesePart;
-                                finalPositive = "";
-                                finalDesc = `💡 ${chinesePart}`;
-                            } else {
-                                finalPositive = englishPart;
-                                finalName = chinesePart;
-                                finalDesc = `💡 ${chinesePart}`;
-                            }
+                            finalPositive = englishPart || "";
+                            finalName = chinesePart;
+                            finalDesc = `💡 ${chinesePart}`;
                         }
 
                         results.push({
@@ -1188,7 +957,7 @@
                         name: combined.split(',')[0].slice(0, 25) || "未命名导入",
                         positive: sanitizePrompts(combined), 
                         negative: "",
-                        desc: "💡 批量导入（未提供手账说明）",
+                        desc: "💡 批量导入",
                         starred: false
                     });
                 }
@@ -1234,8 +1003,8 @@
 
                     if (isNameDup || isPosDup) {
                         let reason = "";
-                        if (isNameDup && isPosDup) reason = "名字 & 内容 均重复";
-                        else if (isNameDup) reason = "名字已存在";
+                        if (isNameDup && isPosDup) reason = "名称和内容均重复";
+                        else if (isNameDup) reason = "名称已存在";
                         else if (isPosDup) reason = "提示词内容已存在";
 
                         conflicts.push({ ...item, conflictReason: reason });
@@ -1265,7 +1034,7 @@
                 inlineEditForm.value = { ...list[0], _category: currentCategory.value };
                 isInlineEditing.value = false;
 
-                triggerToast('导入成功', `已导入 ${list.length} 个提示词到【${currentCategory.value}】`);
+                triggerToast('导入成功', `已导入 ${list.length} 个提示词至 ${currentCategory.value}`);
             };
 
             const executeImportCleanOnly = () => {
@@ -1284,7 +1053,7 @@
                 showBulkImportModal.value = true; 
             };
 
-            // 无阻断自建弹窗切换提示词核心
+            // 巡视提示词
             const inspectPrompt = (item) => {
                 if (isInlineEditing.value && selectedActiveId.value !== item.id) {
                     pendingSwitchItem.value = item;
@@ -1297,7 +1066,6 @@
                 inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
             };
 
-            // 避开同名和未声明引用报错
             const handleConfirmSwitch = () => {
                 if (pendingSwitchItem.value) {
                     const item = pendingSwitchItem.value;
@@ -1313,7 +1081,6 @@
                 isInlineEditing.value = false; 
                 showSwitchConfirm.value = false;
                 pendingSwitchItem.value = null;
-                triggerToast('已切换', '放弃了未保存的修改');
             };
 
             const cancelSwitch = () => {
@@ -1333,7 +1100,7 @@
                 isInlineEditing.value = false;
             };
 
-            // 数据加载与保存
+            // 数据加载
             const loadData = async () => {
                 const res = await fetch('/api/prompts');
                 const data = await res.json();
@@ -1361,24 +1128,18 @@
 
             const saveCategory = async () => {
                 const name = newCategoryName.value.trim();
-                if (!name) {
-                    triggerToast('创建失败', '❌ 分类名称不能为空！');
-                    return;
-                }
-                if (dbData.value.some(item => item.category === name)) {
-                    triggerToast('创建失败', '❌ 该分类已经存在！');
-                    return;
-                }
+                if (!name) return;
+                if (dbData.value.some(item => item.category === name)) return;
 
                 dbData.value.push({ category: name, prompts: [] });
                 currentCategory.value = name;
                 selectedActiveId.value = null;
                 showCategoryModal.value = false;
                 await updateBackend();
-                triggerToast('分类创建成功', `已添加并切换至: ${name}`);
+                triggerToast('分类创建成功', `已切换至: ${name}`);
             };
 
-            // 重命名分类弹窗
+            // 重命名分类
             const openRenameCategoryModal = (catName) => {
                 oldCategoryName.value = catName;
                 renameCategoryName.value = catName;
@@ -1389,18 +1150,11 @@
             const saveRenameCategory = async () => {
                 const name = renameCategoryName.value.trim();
                 const oldName = oldCategoryName.value;
-                if (!name) {
-                    triggerToast('修改失败', '❌ 分类名称不能为空！');
-                    return;
-                }
-                if (name === oldName) {
+                if (!name || name === oldName) {
                     showRenameCategoryModal.value = false;
                     return;
                 }
-                if (dbData.value.some(item => item.category === name)) {
-                    triggerToast('修改失败', '❌ 该新名字分类已存在！');
-                    return;
-                }
+                if (dbData.value.some(item => item.category === name)) return;
 
                 const found = dbData.value.find(item => item.category === oldName);
                 if (found) found.category = name;
@@ -1410,14 +1164,11 @@
                 });
 
                 if (currentCategory.value === oldName) currentCategory.value = name;
-                if (inlineEditForm.value._category === oldName) inlineEditForm.value._category = name;
-
                 showRenameCategoryModal.value = false;
                 await updateBackend();
-                triggerToast('重命名成功', `已将分类【${oldName}】改名为【${name}】`);
             };
 
-            // 删除分类确认
+            // 删除分类
             const triggerDeleteCategory = (catName) => {
                 categoryToDelete.value = catName;
                 showDeleteCategoryConfirm.value = true;
@@ -1437,7 +1188,6 @@
                     selectedActiveId.value = null;
                     showDeleteCategoryConfirm.value = false; 
                     await updateBackend();
-                    triggerToast('分类已删除', `已永久移除分类: ${catName}`);
                 }
             };
 
@@ -1457,7 +1207,6 @@
             const handleDragEnd = async () => {
                 draggedIndex.value = null;
                 await updateBackend();
-                triggerToast('排序已保存', '分类优先级已成功更新！');
             };
 
             // 拼合优先级列表计算
@@ -1475,17 +1224,14 @@
                 return sorted;
             });
 
-            // 添加提示词弹窗
+            // 添加提示词
             const openAddPromptModal = () => {
                 tempPrompt.value = { name: '', positive: '', negative: '', desc: '', starred: false };
                 showPromptModal.value = true;
             };
 
             const saveNewPrompt = async () => {
-                if (!tempPrompt.value.name.trim()) {
-                    triggerToast('添加失败', '❌ 提示词名称不能为空！');
-                    return;
-                }
+                if (!tempPrompt.value.name.trim()) return;
                 const targetCat = dbData.value.find(item => item.category === currentCategory.value);
                 if (!targetCat) return;
 
@@ -1506,44 +1252,27 @@
                 selectedActiveId.value = newId;
                 inlineEditForm.value = { ...newObj, _category: currentCategory.value };
                 isInlineEditing.value = false;
-                
-                triggerToast('创建成功', `已选中新添加提示词: ${newObj.name}`);
             };
 
-            // 内联编辑保存
+            // 内联编辑
             const saveInlineEdit = async () => {
-                if (!inlineEditForm.value.name.trim()) {
-                    triggerToast('保存失败', '❌ 提示词名称不能为空！');
-                    return;
-                }
+                if (!inlineEditForm.value.name.trim()) return;
 
                 const targetCat = dbData.value.find(item => item.category === inlineEditForm.value._category);
                 if (!targetCat) return;
 
-                let idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
-                if (idx === -1) {
-                    idx = targetCat.prompts.findIndex(p => p.name === inlineEditForm.value.name);
-                    if (idx !== -1) {
-                        const safeIntegerId = Date.now() + Math.floor(Math.random() * 1000000);
-                        targetCat.prompts[idx].id = safeIntegerId;
-                        inlineEditForm.value.id = safeIntegerId; 
-                    }
-                }
-
-                inlineEditForm.value.positive = sanitizePrompts(inlineEditForm.value.positive);
-                inlineEditForm.value.negative = sanitizePrompts(inlineEditForm.value.negative);
-
+                const idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
                 if (idx !== -1) {
                     targetCat.prompts[idx].name = inlineEditForm.value.name;
-                    targetCat.prompts[idx].positive = inlineEditForm.value.positive;
-                    targetCat.prompts[idx].negative = inlineEditForm.value.negative;
+                    targetCat.prompts[idx].positive = sanitizePrompts(inlineEditForm.value.positive);
+                    targetCat.prompts[idx].negative = sanitizePrompts(inlineEditForm.value.negative);
                     targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
                     targetCat.prompts[idx].starred = inlineEditForm.value.starred; 
                 } else {
-                    triggerToast('保存失败', '❌ 无法定位数据源，请重试。');
                     return;
                 }
 
+                // 同步更新已选列表
                 const sIdx = selectedPrompts.value.findIndex(p => p.id === inlineEditForm.value.id);
                 if (sIdx !== -1) {
                     selectedPrompts.value[sIdx].name = inlineEditForm.value.name;
@@ -1555,7 +1284,7 @@
 
                 isInlineEditing.value = false;
                 await updateBackend();
-                triggerToast('保存成功', `已更新并自动修正符号: ${inlineEditForm.value.name}`);
+                triggerToast('保存成功', `已更新: ${inlineEditForm.value.name}`);
             };
 
             const cancelInlineEdit = () => {
@@ -1569,7 +1298,7 @@
                 isInlineEditing.value = false;
             };
 
-            // 删除提示词确认
+            // 删除提示词
             const triggerDeletePrompt = (item) => {
                 promptToDelete.value = item;
                 showDeletePromptConfirm.value = true;
@@ -1583,7 +1312,7 @@
                 const targetCat = dbData.value.find(c => c.category === catName);
                 if (targetCat) {
                     targetCat.prompts = targetCat.prompts.filter(p => p.id !== item.id);
-                    selectedPrompts.value = selectedPrompts.value.filter(p => !targetCat.prompts.some(p_ex => p_ex.id === p.id));
+                    selectedPrompts.value = selectedPrompts.value.filter(p => p.id !== item.id);
 
                     if (selectedActiveId.value === item.id) {
                         selectedActiveId.value = null;
@@ -1592,11 +1321,10 @@
 
                     showDeletePromptConfirm.value = false; 
                     await updateBackend();
-                    triggerToast('提示词已删除', `已从【${catName}】中移除`);
                 }
             };
 
-            // 星标常用⭐
+            // 星标置顶
             const toggleStar = async (item) => {
                 const catName = item._category || currentCategory.value;
                 const targetCat = dbData.value.find(c => c.category === catName);
@@ -1604,22 +1332,19 @@
                     const found = targetCat.prompts.find(p => p.id === item.id);
                     if (found) {
                         found.starred = !found.starred;
-                        
                         if (selectedActiveId.value === item.id) {
                             inlineEditForm.value.starred = found.starred;
                         }
-                        
                         const sIdx = selectedPrompts.value.findIndex(p => p.id === item.id);
                         if (sIdx !== -1) {
                             selectedPrompts.value[sIdx].starred = found.starred;
                         }
-                        
                         await updateBackend();
-                        triggerToast(found.starred ? '⭐ 已标为常用(置顶)' : '☆ 已取消常用', `【${item.name}】`);
                     }
                 }
             };
 
+            // 【彻底重构】：复选框勾选事件，阻断一切数据多选溢出和错乱
             const toggleSelect = (item) => {
                 const index = selectedPrompts.value.findIndex(p => p.id === item.id);
                 if (index > -1) {
@@ -1632,10 +1357,9 @@
 
             const clearAllSelected = () => {
                 selectedPrompts.value = [];
-                triggerToast('已清空', '已取消勾选所有提示词');
             };
 
-            // 预设中的 ID 查询最新提示词
+            // 预设 ID 计算
             const findPromptById = (id) => {
                 for (const cat of dbData.value) {
                     const found = cat.prompts.find(p => p.id === id);
@@ -1644,14 +1368,13 @@
                 return null;
             };
 
-            // 生成常用组合名称预览
             const getPresetNamesPreview = (preset) => {
                 const names = [];
                 preset.promptIds.forEach(id => {
                     const p = findPromptById(id);
                     if (p) names.push(p.name);
                 });
-                return names.length > 0 ? names.join(', ') : '包含的提示词已在本地被删除';
+                return names.length > 0 ? names.join(', ') : '包含项已被删除';
             };
 
             const openSavePresetModal = () => {
@@ -1660,33 +1383,25 @@
                 nextTick(() => { if (presetInput.value) presetInput.value.focus(); });
             };
 
-            const saveActiveAsPreset = () => {
+            // 保存预设
+            const saveActiveAsPreset = async () => {
                 const name = newPresetName.value.trim();
-                if (!name) {
-                    triggerToast('保存失败', '❌ 预设组合名称不能为空！');
-                    return;
-                }
+                if (!name) return;
                 
                 const ids = selectedPrompts.value.map(p => p.id);
                 if (ids.length === 0) return;
 
-                const newPreset = {
-                    id: Date.now(),
-                    name: name,
-                    promptIds: ids
-                };
+                const newPreset = { id: Date.now(), name: name, promptIds: ids };
                 presets.value.push(newPreset);
                 
-                localStorage.setItem('promptPresets', JSON.stringify(presets.value));
+                await savePresets(); // 调用本地磁盘存储 API
                 showSavePresetModal.value = false;
                 rightTab.value = 'presets'; 
-                triggerToast('预设组合保存成功', `已存入常用列表: ${name}`);
+                triggerToast('常用组合保存成功', `已写入本地硬盘: ${name}`);
             };
 
             const applyPreset = (preset, append = false) => {
-                if (!append) {
-                    selectedPrompts.value = [];
-                }
+                if (!append) selectedPrompts.value = [];
                 
                 let successCount = 0;
                 preset.promptIds.forEach(id => {
@@ -1701,9 +1416,7 @@
 
                 if (successCount > 0) {
                     rightTab.value = 'selected'; 
-                    triggerToast(append ? '➕ 追加预设成功' : '⚡ 预设加载成功', `已勾选【${preset.name}】中的 ${successCount} 个提示词`);
-                } else {
-                    triggerToast('应用失效', '❌ 该预设包含的提示词已被您在本地删除！');
+                    triggerToast(append ? '追加组合成功' : '组合应用成功', `已加载 ${successCount} 个词`);
                 }
             };
 
@@ -1713,18 +1426,17 @@
                 showDeletePresetConfirm.value = true;
             };
 
-            const executeDeletePreset = () => {
+            const executeDeletePreset = async () => {
                 const preset = presetToDelete.value;
                 if (preset) {
                     presets.value = presets.value.filter(p => p.id !== preset.id);
-                    localStorage.setItem('promptPresets', JSON.stringify(presets.value));
-                    triggerToast('预设已删除', `已移除组合: ${preset.name}`);
+                    await savePresets(); // 回写 presets.json
                 }
                 showDeletePresetConfirm.value = false;
                 presetToDelete.value = null;
             };
 
-            // 正负向提示词冲突检测
+            // 正反向冲突检测
             const checkConflictAndWarn = () => {
                 const posRaw = sortedSelectedPrompts.value.map(item => item.positive).filter(Boolean).join(', ');
                 const negRaw = sortedSelectedPrompts.value.map(item => item.negative).filter(Boolean).join(', ');
@@ -1732,11 +1444,7 @@
                 if (!posRaw || !negRaw) return false;
 
                 const cleanWord = (word) => {
-                    return word
-                        .replace(/:[0-9.]+/g, '') 
-                        .replace(/[()\[\]{}]/g, '') 
-                        .trim()
-                        .toLowerCase();
+                    return word.replace(/:[0-9.]+/g, '').replace(/[()\[\]{}]/g, '').trim().toLowerCase();
                 };
 
                 const posSet = posRaw.split(',').map(cleanWord).filter(w => w.length > 0);
@@ -1752,51 +1460,31 @@
                 return false;
             };
 
-            // 同步文本域选中复制机制
+            // 智能剪贴板注入
             const copyToClipboard = (text) => {
                 return new Promise((resolve, reject) => {
-                    try {
-                        const textArea = document.createElement("textarea");
-                        textArea.value = text;
-                        textArea.style.position = "fixed";
-                        textArea.style.top = "0";
-                        textArea.style.left = "0";
-                        textArea.style.width = "2em";
-                        textArea.style.height = "2em";
-                        textArea.style.padding = "0";
-                        textArea.style.border = "none";
-                        textArea.style.outline = "none";
-                        textArea.style.boxShadow = "none";
-                        textArea.style.background = "transparent";
-                        textArea.style.opacity = "0";
-                        
-                        document.body.appendChild(textArea);
-                        textArea.focus();
-                        textArea.select();
-                        
-                        const successful = document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        
-                        if (successful) resolve();
-                        else reject(new Error("系统底层复制指令拒绝"));
-                    } catch (err) {
-                        reject(err);
-                    }
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.style.position = "fixed";
+                    textArea.style.opacity = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    if (successful) resolve();
+                    else reject();
                 });
             };
 
-            // 智能去重及权重分析器
+            // 英文权重计算器
             const parsePromptTokenWeight = (phrase) => {
                 let str = phrase.trim();
                 if (!str) return { word: "", weight: 0, original: phrase };
 
                 let colonMatch = str.match(/^\(+(.+?):([0-9.]+)\)+$/);
                 if (colonMatch) {
-                    return {
-                        word: colonMatch[1].trim().toLowerCase(),
-                        weight: parseFloat(colonMatch[2]),
-                        original: phrase
-                    };
+                    return { word: colonMatch[1].trim().toLowerCase(), weight: parseFloat(colonMatch[2]), original: phrase };
                 }
 
                 let leftParens = (str.match(/^\(+/)||[""])[0].length;
@@ -1805,25 +1493,16 @@
                 
                 if (parens > 0) {
                     let core = str.slice(parens, -parens).trim();
-                    let weight = Math.pow(1.1, parens);
-                    return {
-                        word: core.toLowerCase(),
-                        weight: weight,
-                        original: phrase
-                    };
+                    return { word: core.toLowerCase(), weight: Math.pow(1.1, parens), original: phrase };
                 }
 
-                return {
-                    word: str.toLowerCase(),
-                    weight: 1.0,
-                    original: phrase
-                };
+                return { word: str.toLowerCase(), weight: 1.0, original: phrase };
             };
 
             // 拼合复制
             const compileAndCopy = (isPositive = true) => {
                 if (sortedSelectedPrompts.value.length === 0) {
-                    triggerToast('复制失败', '❌ 请先勾选需要拼合的提示词卡片！');
+                    triggerToast('复制失败', '❌ 请先勾选提示词卡片！');
                     return;
                 }
 
@@ -1832,7 +1511,7 @@
                     .filter(text => text && text.trim() !== "");
 
                 if (rawTexts.length === 0) {
-                    triggerToast('未复制任何内容', `选中的卡片中没有有效的 ${isPositive ? '正向' : '反向'} 提示词`);
+                    triggerToast('未复制', '无有效内容');
                     return;
                 }
 
@@ -1851,28 +1530,15 @@
                     if (!parsed.word) return;
 
                     if (!seenTokens[parsed.word]) {
-                        seenTokens[parsed.word] = {
-                            weight: parsed.weight,
-                            original: parsed.original
-                        };
+                        seenTokens[parsed.word] = { weight: parsed.weight, original: parsed.original };
                     } else {
                         if (!duplicatesLog[parsed.word]) {
-                            duplicatesLog[parsed.word] = [
-                                { original: seenTokens[parsed.word].original, weight: seenTokens[parsed.word].weight, isWinner: false }
-                            ];
+                            duplicatesLog[parsed.word] = [{ original: seenTokens[parsed.word].original, weight: seenTokens[parsed.word].weight, isWinner: false }];
                         }
-                        
-                        duplicatesLog[parsed.word].push({
-                            original: parsed.original,
-                            weight: parsed.weight,
-                            isWinner: false
-                        });
+                        duplicatesLog[parsed.word].push({ original: parsed.original, weight: parsed.weight, isWinner: false });
 
                         if (parsed.weight > seenTokens[parsed.word].weight) {
-                            seenTokens[parsed.word] = {
-                                weight: parsed.weight,
-                                original: parsed.original
-                            };
+                            seenTokens[parsed.word] = { weight: parsed.weight, original: parsed.original };
                         }
                     }
                 });
@@ -1883,7 +1549,7 @@
 
                 copyToClipboard(result).then(() => {
                     const typeText = isPositive ? '正向' : '反向';
-                    triggerToast(`复制${typeText}提示词成功`, `已自动排重并保留最高权重项`);
+                    triggerToast(`复制${typeText}成功`, `已自动排重并保留最大权重项`);
 
                     const conflictWordsList = Object.keys(duplicatesLog);
                     if (conflictWordsList.length > 0) {
@@ -1894,26 +1560,22 @@
                                 ...item,
                                 isWinner: item.original === winnerText
                             }));
-                            report.push({
-                                word: word,
-                                items: itemsWithWinner
-                            });
+                            report.push({ word: word, items: itemsWithWinner });
                         });
-
                         dupMergeConflicts.value = report;
                         showDupMergeModal.value = true;
                     } else {
-                        setTimeout(() => {
-                            checkConflictAndWarn();
-                        }, 350);
+                        setTimeout(() => { checkConflictAndWarn(); }, 350);
                     }
-                }).catch(err => {
-                    console.error("复制核心发生底层阻断:", err);
-                    triggerToast('复制失败', '❌ 写入剪贴板失败，请尝试重新选中复制');
                 });
             };
 
-            onMounted(loadData);
+            // 全生命周期初始化
+            onMounted(async () => {
+                await loadSettings(); // 首先加载拉伸宽度和分隔符设置
+                await loadPresets();  // 加载本地常用组合 presets.json
+                await loadData();     // 加载清洗后的 prompts.json
+            });
 
             return {
                 dbData,

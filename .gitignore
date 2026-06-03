@@ -13,3 +13,5 @@ Thumbs.db
 
 # 忽略提示词
 prompts.json
+presets.json
+settings.json
