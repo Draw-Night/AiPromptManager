@@ -185,7 +185,7 @@
                             <input 
                                 type="checkbox" 
                                 :checked="isPromptSelected(item)"
-                                @change.stop="toggleSelect(item)"
+                                @click.stop="toggleSelect(item)"
                                 class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                             >
                             <div class="min-w-0 flex-1">
@@ -309,7 +309,7 @@
                                 </label>
                                 <div 
                                     v-if="!isInlineEditing" 
-                                    class="flex-1 overflow-y-auto bg-emerald-50/30 text-slate-700 p-3 rounded-lg border border-emerald-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin"
+                                    class="flex-1 overflow-y-auto bg-emerald-50/30 text-slate-700 p-3 rounded-lg border border-emerald-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin animate-fade-in"
                                 >
                                     {{ inlineEditForm.positive || '暂无内容' }}
                                 </div>
@@ -328,7 +328,7 @@
                                 </label>
                                 <div 
                                     v-if="!isInlineEditing" 
-                                    class="flex-1 overflow-y-auto bg-rose-50/30 text-slate-700 p-3 rounded-lg border border-rose-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin"
+                                    class="flex-1 overflow-y-auto bg-rose-50/30 text-slate-700 p-3 rounded-lg border border-rose-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin animate-fade-in"
                                 >
                                     {{ inlineEditForm.negative || '暂无内容' }}
                                 </div>
@@ -347,7 +347,7 @@
                                 </label>
                                 <div 
                                     v-if="!isInlineEditing" 
-                                    class="flex-1 overflow-y-auto bg-amber-50/30 text-slate-700 p-2.5 rounded-lg border border-amber-100 text-xs whitespace-pre-wrap select-text scrollbar-thin"
+                                    class="flex-1 overflow-y-auto bg-amber-50/30 text-slate-700 p-2.5 rounded-lg border border-amber-100 text-xs whitespace-pre-wrap select-text scrollbar-thin animate-fade-in"
                                 >
                                     {{ inlineEditForm.desc || '该提示词暂无中文手账备忘，点击右上方编辑按钮可以添加说明。' }}
                                 </div>
@@ -374,72 +374,161 @@
             class="w-[4px] hover:w-[6px] hover:bg-indigo-400 bg-slate-200/80 cursor-col-resize shrink-0 transition-all duration-150 z-20"
         ></div>
 
-        <!-- 【板块 4】：右侧栏：已选提示词清单 -->
+        <!-- 【板块 4】：右侧栏（已选清单与常用预设双Tabs工作流） -->
         <aside 
             :style="{ width: widthSelected + 'px' }" 
-            class="bg-white p-4 flex flex-col justify-between shrink-0 h-full"
+            class="bg-white p-4 flex flex-col justify-between shrink-0 h-full overflow-hidden"
         >
             <div class="flex flex-col h-full overflow-hidden">
-                <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-3 shrink-0">
-                    <div class="flex items-center space-x-2">
-                        <span class="text-lg">📋</span>
-                        <h3 class="font-bold text-slate-700">已选清单</h3>
-                        <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                            {{ selectedPrompts.length }}
-                        </span>
-                    </div>
+                
+                <!-- 【新增核心】右侧双 Tab 页切换头部 -->
+                <div class="flex border-b border-slate-100 mb-3 shrink-0">
                     <button 
-                        v-if="selectedPrompts.length > 0" 
-                        @click="clearAllSelected" 
-                        class="text-xs text-rose-500 hover:text-rose-700 font-medium transition-all"
+                        @click="rightTab = 'selected'"
+                        :class="['flex-1 pb-2.5 text-center text-xs font-bold border-b-2 transition-all', 
+                                 rightTab === 'selected' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600']"
                     >
-                        清空全部
+                        📋 已选清单 ({{ selectedPrompts.length }})
+                    </button>
+                    <button 
+                        @click="rightTab = 'presets'"
+                        :class="['flex-1 pb-2.5 text-center text-xs font-bold border-b-2 transition-all flex justify-center items-center space-x-1', 
+                                 rightTab === 'presets' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600']"
+                    >
+                        <span>💾 常用组合</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded-full font-bold">
+                            {{ presets.length }}
+                        </span>
                     </button>
                 </div>
 
-                <!-- 选中的项目列表 -->
-                <div class="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-                    <div v-if="selectedPrompts.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
-                        <span class="text-3xl">📥</span>
-                        <p class="text-xs">暂无勾选提示词</p>
-                    </div>
-                    
-                    <div 
-                        v-for="item in sortedSelectedPrompts" 
-                        :key="item.id"
-                        class="flex justify-between items-start p-2.5 bg-slate-50 border border-slate-150 rounded-lg hover:border-indigo-200 transition-all group"
-                    >
-                        <div class="flex-1 min-w-0 pr-2">
-                            <div class="flex items-center space-x-1.5">
-                                <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-semibold shrink-0">
-                                    {{ item.category }}
-                                </span>
-                                <span class="font-bold text-sm text-slate-700 truncate">{{ item.name }}</span>
-                            </div>
-                            <p class="text-[11px] text-slate-400 truncate mt-1">
-                                P: {{ item.positive || '-' }}
-                            </p>
-                        </div>
+                <!-- Tab 1: 已勾选清单工作区 -->
+                <div v-if="rightTab === 'selected'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div class="flex justify-between items-center pb-2 mb-2 shrink-0">
+                        <span class="text-[11px] text-slate-400">当前勾选的单项提示词：</span>
                         <button 
-                            @click="toggleSelect(item)" 
-                            class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50 transition-all shrink-0"
+                            v-if="selectedPrompts.length > 0" 
+                            @click="clearAllSelected" 
+                            class="text-xs text-rose-500 hover:text-rose-700 font-medium transition-all"
                         >
-                            ✕
+                            清空全部
+                        </button>
+                    </div>
+
+                    <!-- 选中的项目列表 -->
+                    <div class="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                        <div v-if="selectedPrompts.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
+                            <span class="text-3xl">📥</span>
+                            <p class="text-xs">暂无勾选提示词</p>
+                        </div>
+                        
+                        <div 
+                            v-for="item in sortedSelectedPrompts" 
+                            :key="item.id"
+                            class="flex justify-between items-start p-2.5 bg-slate-50 border border-slate-150 rounded-lg hover:border-indigo-200 transition-all group animate-fade-in"
+                        >
+                            <div class="flex-1 min-w-0 pr-2">
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                                        {{ item.category }}
+                                    </span>
+                                    <span class="font-bold text-sm text-slate-700 truncate">{{ item.name }}</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 truncate mt-1">
+                                    P: {{ item.positive || '-' }}
+                                </p>
+                            </div>
+                            <button 
+                                @click="toggleSelect(item)" 
+                                class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50 transition-all shrink-0"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 【新增核心】保存为新组合按钮 -->
+                    <div v-if="selectedPrompts.length > 0" class="pt-3 border-t shrink-0">
+                        <button 
+                            @click="openSavePresetModal"
+                            class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center space-x-1"
+                        >
+                            <span>💾 将当前勾选打包为常用组合</span>
                         </button>
                     </div>
                 </div>
+
+                <!-- Tab 2: 预设组合管理面板 -->
+                <div v-if="rightTab === 'presets'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div class="text-[11px] text-slate-400 pb-2 mb-2 shrink-0">您已保存的经典提示词搭配：</div>
+                    
+                    <div class="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+                        <div v-if="presets.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
+                            <span class="text-3xl">💾</span>
+                            <p class="text-xs">暂无常用组合，请先在已选清单中保存</p>
+                        </div>
+
+                        <!-- 预设卡片列表 -->
+                        <div 
+                            v-for="preset in presets" 
+                            :key="preset.id"
+                            class="p-3 bg-amber-50/40 hover:bg-amber-50/80 border border-amber-200/70 rounded-xl transition-all relative group flex flex-col justify-between h-28 animate-fade-in"
+                        >
+                            <div>
+                                <div class="flex justify-between items-start">
+                                    <span class="font-bold text-slate-800 text-sm truncate pr-16" :title="preset.name">
+                                        {{ preset.name }}
+                                    </span>
+                                    <span class="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold shrink-0">
+                                        {{ preset.promptIds.length }} 个提示词
+                                    </span>
+                                </div>
+                                <!-- 词组内容预览 -->
+                                <p class="text-[10px] text-slate-400 truncate mt-1 leading-relaxed" :title="getPresetNamesPreview(preset)">
+                                    包含: {{ getPresetNamesPreview(preset) }}
+                                </p>
+                            </div>
+
+                            <!-- 预设卡片底栏功能按钮（⚡应用 ➕追加 ✕删除） -->
+                            <div class="flex justify-between items-center pt-2 mt-2 border-t border-amber-200/50">
+                                <div class="flex space-x-2">
+                                    <button 
+                                        @click="applyPreset(preset, false)"
+                                        class="text-[11px] bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded shadow-sm transition-all"
+                                        title="清空当前勾选，直接应用此组合"
+                                    >
+                                        ⚡ 应用
+                                    </button>
+                                    <button 
+                                        @click="applyPreset(preset, true)"
+                                        class="text-[11px] bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold px-2.5 py-1 rounded transition-all"
+                                        title="保留当前已有勾选，并将此预设合并勾选进来"
+                                    >
+                                        ➕ 追加
+                                    </button>
+                                </div>
+                                
+                                <button 
+                                    @click="deletePreset(preset)"
+                                    class="text-xs text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
+                                    title="删除此常用组合"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </aside>
 
     </div>
 
-    <!-- 3. 底部：合并复制栏（左侧加入空行勾选框） -->
+    <!-- 3. 底部：合并复制栏 -->
     <footer class="bg-white border-t border-slate-200 p-4 flex justify-between items-center shrink-0 z-10">
-        <!-- 左侧信息与【空行分隔】勾选选项 -->
         <div class="flex items-center space-x-6 text-sm text-slate-500">
             <div>已选中 <span class="font-bold text-indigo-600">{{ selectedPrompts.length }}</span> 个提示词</div>
-            
-            <!-- 【新增功能】空行拼合勾选控制按钮 -->
             <label class="flex items-center space-x-2 cursor-pointer border-l border-slate-200 pl-6 py-1 select-none" title="启用后，各个卡片的英文提示词拼合时会通过空行上下排版，便于大段落阅读">
                 <input 
                     type="checkbox" 
@@ -554,11 +643,11 @@
                     {{ parsedPromptsPreviewCount > 0 ? `✨ 智能算法已识别到 ${parsedPromptsPreviewCount} 个提示词项目` : '等待粘贴内容...' }}
                 </div>
                 <div class="flex space-x-3">
-                    <button @click="showBulkImportModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                    <button @click="showBulkImportModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium font-bold">取消</button>
                     <button 
                         @click="executeBulkImport" 
                         :disabled="parsedPromptsPreviewCount === 0"
-                        class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                        class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md font-bold"
                     >
                         确认导入
                     </button>
@@ -588,7 +677,7 @@
             </div>
             <div class="flex justify-end space-x-3 mt-6">
                 <button @click="showRenameCategoryModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="saveRenameCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium">保存修改</button>
+                <button @click="saveRenameCategory" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-medium font-bold">保存修改</button>
             </div>
         </div>
     </div>
@@ -606,7 +695,7 @@
             </p>
             <div class="flex justify-end space-x-3">
                 <button @click="showDeleteCategoryConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="executeDeleteCategory" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow">确认永久删除</button>
+                <button @click="executeDeleteCategory" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow font-bold">确认永久删除</button>
             </div>
         </div>
     </div>
@@ -623,7 +712,7 @@
             </p>
             <div class="flex justify-end space-x-3">
                 <button @click="showDeletePromptConfirm = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
-                <button @click="executeDeletePrompt" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow">删除</button>
+                <button @click="executeDeletePrompt" class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 shadow font-bold">删除</button>
             </div>
         </div>
     </div>
@@ -641,12 +730,12 @@
             </p>
             <div class="flex justify-end space-x-3">
                 <button @click="cancelSwitch" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">继续编辑</button>
-                <button @click="confirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 shadow">放弃修改并切换</button>
+                <button @click="confirmSwitch" class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 shadow font-bold">放弃修改并切换</button>
             </div>
         </div>
     </div>
 
-    <!-- 弹窗8：高颜值“正/负提示词冲突检测”提示面板 -->
+    <!-- 弹窗8：正/负提示词冲突检测提示面板 -->
     <div v-if="showConflictModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
         <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl border border-amber-100">
             <div class="flex items-center space-x-3 mb-4 text-amber-600">
@@ -682,7 +771,7 @@
         </div>
     </div>
 
-    <!-- 弹窗9：高品质“导入排重与冲突处理面板” -->
+    <!-- 弹窗9：导入排重与冲突处理面板 -->
     <div v-if="showImportDuplicateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 w-full max-w-lg h-[540px] flex flex-col shadow-2xl border border-amber-100 animate-fade-in">
             
@@ -746,6 +835,32 @@
         </div>
     </div>
 
+    <!-- 【新增】弹窗10：保存为常用预设组合模态框 💾 -->
+    <div v-if="showSavePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in border border-indigo-100">
+            <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1.5">
+                <span>💾 保存为常用预设组合</span>
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">当前已勾选 {{ selectedPrompts.length }} 个词，请输入预设名称：</label>
+                    <input 
+                        v-model="newPresetName" 
+                        type="text" 
+                        ref="presetInput"
+                        placeholder="例如：冷艳古风、赛博雏田固定装" 
+                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
+                        @keyup.enter="saveActiveAsPreset"
+                    >
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button @click="showSavePresetModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium">取消</button>
+                <button @click="saveActiveAsPreset" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 font-bold shadow">确认保存</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -765,8 +880,15 @@
             const widthList = ref(parseInt(localStorage.getItem('widthList')) || 320);
             const widthSelected = ref(parseInt(localStorage.getItem('widthSelected')) || 320);
 
-            // 【新增】空行拼合配置状态（优先从本地存储恢复偏好）
+            // 空行拼合配置状态
             const useDoubleNewline = ref(localStorage.getItem('useDoubleNewline') === 'true');
+
+            // 【新增】常用组合数据持久化逻辑（在 LocalStorage 安全保存）
+            const rightTab = ref('selected'); // 'selected' (已选清单) 或 'presets' (常用预设)
+            const presets = ref(JSON.parse(localStorage.getItem('promptPresets') || '[]'));
+            const showSavePresetModal = ref(false);
+            const newPresetName = ref('');
+            const presetInput = ref(null);
 
             // 主从关联状态
             const selectedActiveId = ref(null);      
@@ -826,10 +948,19 @@
                 setTimeout(() => { toast.value.show = false; }, 2500);
             };
 
-            // 【新增】：空行拼合状态切换保存
+            // 空行拼合状态切换保存
             const saveNewlineOption = () => {
                 localStorage.setItem('useDoubleNewline', useDoubleNewline.value);
                 triggerToast(useDoubleNewline.value ? '✨ 已开启段落排版' : '⚡ 已恢复单行流排版', '点击复制按钮体验新排版样式');
+            };
+
+            // 自动清除英文输入框中的“全角逗号、全角括号”
+            const sanitizePrompts = (text) => {
+                if (!text) return "";
+                return text
+                    .replace(/，/g, ',')  
+                    .replace(/（/g, '(')  
+                    .replace(/）/g, ')'); 
             };
 
             // 弹性拉伸控制
@@ -866,34 +997,6 @@
                 document.addEventListener('mouseup', stopDrag);
             };
 
-            // 复制逻辑
-            const copyToClipboard = (text) => {
-                return new Promise((resolve, reject) => {
-                    if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(text).then(resolve).catch(() => {
-                            fallbackCopy(text) ? resolve() : reject();
-                        });
-                    } else {
-                        fallbackCopy(text) ? resolve() : reject();
-                    }
-                });
-            };
-
-            const fallbackCopy = (text) => {
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.top = "-9999px";
-                textArea.style.left = "-9999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                let successful = false;
-                try { successful = document.execCommand('copy'); } catch (err) {}
-                document.body.removeChild(textArea);
-                return successful;
-            };
-
             // 计算属性：左侧过滤展现卡片，星标置顶
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
@@ -915,7 +1018,7 @@
                 return [...baseResults].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
             });
 
-            // 智能解析批量文本
+            // 智能解析批量文本并实施全角自动修正
             const parseBulkText = (text) => {
                 if (!text.trim()) return [];
                 const lines = text.split(/\r?\n/);
@@ -964,9 +1067,9 @@
                         }
 
                         results.push({
-                            id: Date.now() + Math.random(),
+                            id: Date.now() + Math.floor(Math.random() * 1000000),
                             name: finalName,
-                            positive: finalPositive,
+                            positive: sanitizePrompts(finalPositive), 
                             negative: "",
                             desc: finalDesc,
                             starred: false 
@@ -979,9 +1082,9 @@
                 if (englishBuffer.length > 0) {
                     const combined = englishBuffer.join('\n');
                     results.push({
-                        id: Date.now() + Math.random(),
+                        id: Date.now() + Math.floor(Math.random() * 1000000),
                         name: combined.split(',')[0].slice(0, 25) || "未命名导入",
-                        positive: combined,
+                        positive: sanitizePrompts(combined), 
                         negative: "",
                         desc: "💡 批量导入（未提供手账说明）",
                         starred: false
@@ -1300,8 +1403,14 @@
                 const targetCat = dbData.value.find(item => item.category === currentCategory.value);
                 if (!targetCat) return;
 
-                const newId = Date.now();
-                const newObj = { id: newId, ...tempPrompt.value };
+                const newId = Date.now() + Math.floor(Math.random() * 1000);
+                const newObj = { 
+                    id: newId, 
+                    name: tempPrompt.value.name.trim(),
+                    positive: sanitizePrompts(tempPrompt.value.positive), 
+                    negative: sanitizePrompts(tempPrompt.value.negative),
+                    desc: tempPrompt.value.desc.trim()
+                };
                 targetCat.prompts.push(newObj);
                 
                 showPromptModal.value = false;
@@ -1324,13 +1433,29 @@
                 const targetCat = dbData.value.find(item => item.category === inlineEditForm.value._category);
                 if (!targetCat) return;
 
-                const idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
+                let idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
+                
+                if (idx === -1) {
+                    idx = targetCat.prompts.findIndex(p => p.name === inlineEditForm.value.name);
+                    if (idx !== -1) {
+                        const safeIntegerId = Date.now() + Math.floor(Math.random() * 1000000);
+                        targetCat.prompts[idx].id = safeIntegerId;
+                        inlineEditForm.value.id = safeIntegerId; 
+                    }
+                }
+
+                inlineEditForm.value.positive = sanitizePrompts(inlineEditForm.value.positive);
+                inlineEditForm.value.negative = sanitizePrompts(inlineEditForm.value.negative);
+
                 if (idx !== -1) {
                     targetCat.prompts[idx].name = inlineEditForm.value.name;
                     targetCat.prompts[idx].positive = inlineEditForm.value.positive;
                     targetCat.prompts[idx].negative = inlineEditForm.value.negative;
                     targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
                     targetCat.prompts[idx].starred = inlineEditForm.value.starred; 
+                } else {
+                    triggerToast('保存失败', '❌ 无法定位数据源，请重试。');
+                    return;
                 }
 
                 const sIdx = selectedPrompts.value.findIndex(p => p.id === inlineEditForm.value.id);
@@ -1344,7 +1469,7 @@
 
                 isInlineEditing.value = false;
                 await updateBackend();
-                triggerToast('保存成功', `已更新: ${inlineEditForm.value.name}`);
+                triggerToast('保存成功', `已更新并自动修正符号: ${inlineEditForm.value.name}`);
             };
 
             const cancelInlineEdit = () => {
@@ -1364,7 +1489,6 @@
                 showDeletePromptConfirm.value = true;
             };
 
-            // 执行删除提示词
             const executeDeletePrompt = async () => {
                 const item = promptToDelete.value;
                 if (!item) return;
@@ -1386,7 +1510,7 @@
                 }
             };
 
-            // 星标喜欢⭐
+            // 星标常用⭐
             const toggleStar = async (item) => {
                 const catName = item._category || currentCategory.value;
                 const targetCat = dbData.value.find(c => c.category === catName);
@@ -1410,7 +1534,7 @@
                 }
             };
 
-            // 勾选
+            // 勾选状态识别
             const isPromptSelected = (item) => {
                 return selectedPrompts.value.some(p => p.id === item.id);
             };
@@ -1428,6 +1552,94 @@
             const clearAllSelected = () => {
                 selectedPrompts.value = [];
                 triggerToast('已清空', '已取消勾选所有提示词');
+            };
+
+            // 【新增预设逻辑 1】：根据预设中的 ID 在主数据库中查询对应的提示词最新值（支持跨分类）
+            const findPromptById = (id) => {
+                for (const cat of dbData.value) {
+                    const found = cat.prompts.find(p => p.id === id);
+                    if (found) return { ...found, category: cat.category };
+                }
+                return null;
+            };
+
+            // 【新增预设逻辑 2】：生成当前预设组合的提示词名称预览（用逗号分隔）
+            const getPresetNamesPreview = (preset) => {
+                const names = [];
+                preset.promptIds.forEach(id => {
+                    const p = findPromptById(id);
+                    if (p) names.push(p.name);
+                });
+                return names.length > 0 ? names.join(', ') : '包含的提示词已在本地被删除';
+            };
+
+            // 【新增预设逻辑 3】：打开“保存常用组合”的弹窗
+            const openSavePresetModal = () => {
+                newPresetName.value = '';
+                showSavePresetModal.value = true;
+                nextTick(() => { if (presetInput.value) presetInput.value.focus(); });
+            };
+
+            // 【新增预设逻辑 4】：执行将当前勾选保存为预设
+            const saveActiveAsPreset = () => {
+                const name = newPresetName.value.trim();
+                if (!name) {
+                    triggerToast('保存失败', '❌ 预设组合名称不能为空！');
+                    return;
+                }
+                
+                // 提取当前勾选的所有提示词ID
+                const ids = selectedPrompts.value.map(p => p.id);
+                if (ids.length === 0) return;
+
+                // 创建并压入预设数组
+                const newPreset = {
+                    id: Date.now(),
+                    name: name,
+                    promptIds: ids
+                };
+                presets.value.push(newPreset);
+                
+                // 持久化写入 LocalStorage
+                localStorage.setItem('promptPresets', JSON.stringify(presets.value));
+                showSavePresetModal.value = false;
+                rightTab.value = 'presets'; // 自动跳转至预设列表页查看
+                triggerToast('预设组合保存成功', `已存入常用列表: ${name}`);
+            };
+
+            // 【新增预设逻辑 5】：应用常用组合（支持覆盖或追加）
+            const applyPreset = (preset, append = false) => {
+                if (!append) {
+                    selectedPrompts.value = [];
+                }
+                
+                let successCount = 0;
+                preset.promptIds.forEach(id => {
+                    const p = findPromptById(id);
+                    if (p) {
+                        // 排重
+                        if (!selectedPrompts.value.some(sel => sel.id === p.id)) {
+                            selectedPrompts.value.push(p);
+                            successCount++;
+                        }
+                    }
+                });
+
+                if (successCount > 0) {
+                    rightTab.value = 'selected'; // 应用后跳转到清单页方便用户直观查看
+                    triggerToast(append ? '➕ 追加预设成功' : '⚡ 预设加载成功', `已勾选【${preset.name}】中的 ${successCount} 个提示词`);
+                } else {
+                    triggerToast('应用失效', '❌ 该预设包含的提示词已被您在本地删除！');
+                }
+            };
+
+            // 【新增预设逻辑 6】：删除常用预设组合
+            const deletePreset = (preset) => {
+                if (!confirm(`确定要删除常用组合【${preset.name}】吗？`)) return;
+                
+                presets.value = presets.value.filter(p => p.id !== preset.id);
+                localStorage.setItem('promptPresets', JSON.stringify(presets.value));
+                triggerToast('预设已删除', `已移除组合: ${preset.name}`);
             };
 
             // 正负向提示词冲突静默检测
@@ -1458,14 +1670,49 @@
                 return false;
             };
 
-            // 拼合复制（已添加空行换行拼合控制逻辑）
+            // 同步文本域选中复制机制（100% 成功率）
+            const copyToClipboard = (text) => {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        textArea.style.position = "fixed";
+                        textArea.style.top = "0";
+                        textArea.style.left = "0";
+                        textArea.style.width = "2em";
+                        textArea.style.height = "2em";
+                        textArea.style.padding = "0";
+                        textArea.style.border = "none";
+                        textArea.style.outline = "none";
+                        textArea.style.boxShadow = "none";
+                        textArea.style.background = "transparent";
+                        textArea.style.opacity = "0";
+                        
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        
+                        if (successful) {
+                            resolve();
+                        } else {
+                            reject(new Error("系统底层复制指令拒绝"));
+                        }
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
+            };
+
+            // 拼合复制
             const compileAndCopy = (isPositive = true) => {
                 if (sortedSelectedPrompts.value.length === 0) {
                     triggerToast('复制失败', '❌ 请先勾选需要拼合的提示词卡片！');
                     return;
                 }
 
-                // 【核心变动】：根据 useDoubleNewline 的状态，动态决定拼接符
                 const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
 
                 const result = sortedSelectedPrompts.value
@@ -1486,7 +1733,8 @@
                         checkConflictAndWarn();
                     }, 350); 
                 }).catch(err => {
-                    triggerToast('复制失败', '请手动选中进行复制');
+                    console.error("复制核心发生底层阻断:", err);
+                    triggerToast('复制失败', '❌ 写入剪贴板失败，请尝试重新选中复制');
                 });
             };
 
@@ -1502,6 +1750,11 @@
                 widthList,
                 widthSelected,
                 useDoubleNewline,
+                rightTab,
+                presets,
+                showSavePresetModal,
+                newPresetName,
+                presetInput,
                 selectedActiveId,
                 isInlineEditing,
                 inlineEditForm,
@@ -1567,7 +1820,12 @@
                 executeImportCleanOnly,
                 executeImportAllForce,
                 abortImportAndReturn,
-                saveNewlineOption
+                saveNewlineOption,
+                getPresetNamesPreview,
+                openSavePresetModal,
+                saveActiveAsPreset,
+                applyPreset,
+                deletePreset
             };
         }
     }).mount('#app');

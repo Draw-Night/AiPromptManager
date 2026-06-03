@@ -4,7 +4,10 @@ const path = require('path');
 const os = require('os');
 const app = express();
 
-app.use(express.json());
+// 【核心修复】：解除 Express 默认的 100KB 限制，将上限提高到 50MB
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const isPackaged = __dirname.includes('app.asar'); 
@@ -19,7 +22,7 @@ if (isPackaged) {
 
 const DATA_FILE = path.join(dataDir, 'prompts.json');
 
-// 默认数据，部分设定为 starred: true
+// 默认数据
 const defaultData = [
     {
         "category": "人物",
@@ -31,19 +34,6 @@ const defaultData = [
                 "negative": "low quality, bad hands, deformed",
                 "desc": "💡【画师手账 · 赛博女战士使用指南】\n---------------------------------------------\n1. 推荐 Lora: CyberpunkStyle_v2 (权重推荐 0.75)\n2. 最佳采样器: DPM++ 2M SDE Karras (28步以上)",
                 "starred": true
-            }
-        ]
-    },
-    {
-        "category": "表情",
-        "prompts": [
-            { 
-                "id": 2, 
-                "name": "温柔微笑", 
-                "positive": "smiling, gentle smile, closed mouth", 
-                "negative": "frowning",
-                "desc": "📝【表情微调说明】\n- 适合肖像画，closed mouth 能够防止AI画出奇怪的牙齿。",
-                "starred": false
             }
         ]
     }
@@ -59,7 +49,6 @@ app.get('/api/prompts', (req, res) => {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         let parsed = JSON.parse(raw);
         
-        // 自动兼容处理：为所有旧提示词平滑补全 starred 字段，防止报错
         let changed = false;
         if (Array.isArray(parsed)) {
             parsed.forEach(cat => {
