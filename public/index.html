@@ -473,7 +473,6 @@
         </div>
     </div>
 
-    <!-- 弹窗组件（分类增加、预设增加、导入去重等） -->
     <!-- 弹窗1：添加提示词 -->
     <div v-if="showPromptModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
@@ -823,10 +822,16 @@
                 triggerToast(useDoubleNewline.value ? '✨ 已开启段落排版' : '⚡ 已恢复单行排版', '再次复制提示词即可体验效果');
             };
 
-            // 清洗全角符号
+            // 自动清洗全角符号
             const sanitizePrompts = (text) => {
                 if (!text) return "";
-                return text.replace(/，/g, ',').replace(/（/g, '(').replace(/）/g, ')'); 
+                return text
+                    .replace(/，/g, ',')  // 中文逗号 -> 英文
+                    .replace(/：/g, ':')  // 中文冒号 -> 英文
+                    .replace(/（/g, '(')  // 中文左括号 -> 英文
+                    .replace(/）/g, ')')  // 中文右括号 -> 英文
+                    .replace(/；/g, ';')  // 中文分号 -> 英文
+                    .replace(/！/g, '!'); // 中文感叹号 -> 英文
             };
 
             // 弹性拉伸控制
@@ -863,7 +868,6 @@
                 return selectedPrompts.value.some(p => p.id === item.id);
             };
 
-            // 【彻底重构】：锁定分类内局部搜索，并消除直接重构对 Vue 树渲染的冲击
             const displayedPrompts = computed(() => {
                 const query = searchQuery.value.trim().toLowerCase();
                 const found = dbData.value.find(item => item.category === currentCategory.value);
@@ -883,7 +887,6 @@
                     });
                 }
                 
-                // 仅在这里计算星标排序，不再通过 map 动态创造解构项破坏 VNode
                 return [...baseResults].sort((a, b) => {
                     const aSel = isPromptSelected(a) ? 1 : 0;
                     const bSel = isPromptSelected(b) ? 1 : 0;
@@ -900,7 +903,9 @@
             // 智能解析批量文本
             const parseBulkText = (text) => {
                 if (!text.trim()) return [];
-                const lines = text.split(/\r?\n/);
+                
+                const sanitizedRawText = sanitizePrompts(text);
+                const lines = sanitizedRawText.split(/\r?\n/);
                 const results = [];
                 let englishBuffer = []; 
 
@@ -940,7 +945,7 @@
                         results.push({
                             id: Date.now() + Math.floor(Math.random() * 1000000),
                             name: finalName,
-                            positive: sanitizePrompts(finalPositive), 
+                            positive: finalPositive, 
                             negative: "",
                             desc: finalDesc,
                             starred: false 
@@ -955,7 +960,7 @@
                     results.push({
                         id: Date.now() + Math.floor(Math.random() * 1000000),
                         name: combined.split(',')[0].slice(0, 25) || "未命名导入",
-                        positive: sanitizePrompts(combined), 
+                        positive: combined, 
                         negative: "",
                         desc: "💡 批量导入",
                         starred: false
@@ -1264,8 +1269,11 @@
                 const idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
                 if (idx !== -1) {
                     targetCat.prompts[idx].name = inlineEditForm.value.name;
-                    targetCat.prompts[idx].positive = sanitizePrompts(inlineEditForm.value.positive);
-                    targetCat.prompts[idx].negative = sanitizePrompts(inlineEditForm.value.negative);
+                    inlineEditForm.value.positive = sanitizePrompts(inlineEditForm.value.positive);
+                    inlineEditForm.value.negative = sanitizePrompts(inlineEditForm.value.negative);
+
+                    targetCat.prompts[idx].positive = inlineEditForm.value.positive;
+                    targetCat.prompts[idx].negative = inlineEditForm.value.negative;
                     targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
                     targetCat.prompts[idx].starred = inlineEditForm.value.starred; 
                 } else {
@@ -1284,7 +1292,7 @@
 
                 isInlineEditing.value = false;
                 await updateBackend();
-                triggerToast('保存成功', `已更新: ${inlineEditForm.value.name}`);
+                triggerToast('保存成功', `已清洗符号并保存: ${inlineEditForm.value.name}`);
             };
 
             const cancelInlineEdit = () => {
@@ -1344,7 +1352,7 @@
                 }
             };
 
-            // 【彻底重构】：复选框勾选事件，阻断一切数据多选溢出和错乱
+            // 复选框勾选事件
             const toggleSelect = (item) => {
                 const index = selectedPrompts.value.findIndex(p => p.id === item.id);
                 if (index > -1) {
@@ -1394,7 +1402,7 @@
                 const newPreset = { id: Date.now(), name: name, promptIds: ids };
                 presets.value.push(newPreset);
                 
-                await savePresets(); // 调用本地磁盘存储 API
+                await savePresets(); 
                 showSavePresetModal.value = false;
                 rightTab.value = 'presets'; 
                 triggerToast('常用组合保存成功', `已写入本地硬盘: ${name}`);
@@ -1430,7 +1438,7 @@
                 const preset = presetToDelete.value;
                 if (preset) {
                     presets.value = presets.value.filter(p => p.id !== preset.id);
-                    await savePresets(); // 回写 presets.json
+                    await savePresets(); 
                 }
                 showDeletePresetConfirm.value = false;
                 presetToDelete.value = null;
@@ -1499,57 +1507,114 @@
                 return { word: str.toLowerCase(), weight: 1.0, original: phrase };
             };
 
-            // 拼合复制
+            // 【核心重构】：高容错提示词卡片级分组拼合与物理全局排重算法
             const compileAndCopy = (isPositive = true) => {
                 if (sortedSelectedPrompts.value.length === 0) {
                     triggerToast('复制失败', '❌ 请先勾选提示词卡片！');
                     return;
                 }
 
-                const rawTexts = sortedSelectedPrompts.value
-                    .map(item => isPositive ? item.positive : item.negative)
-                    .filter(text => text && text.trim() !== "");
+                // 1. 提取所有有实际有效英文词条的已选卡片结构
+                const activeCards = sortedSelectedPrompts.value.map(item => {
+                    const rawText = isPositive ? item.positive : item.negative;
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        text: rawText ? rawText.trim() : ""
+                    };
+                }).filter(card => card.text !== "");
 
-                if (rawTexts.length === 0) {
-                    triggerToast('未复制', '无有效内容');
+                if (activeCards.length === 0) {
+                    triggerToast('未复制', `选中的卡片中没有可导出的 ${isPositive ? '正向' : '反向'} 提示词`);
                     return;
                 }
 
-                const allTokensRaw = [];
-                rawTexts.forEach(text => {
-                    text.split(',').forEach(tok => {
-                        if (tok.trim()) allTokensRaw.push(tok.trim());
+                // 2. 物理摊平所有英文单词词条，并标记它们属于哪个卡片 ID
+                const flatTokensRaw = [];
+                activeCards.forEach(card => {
+                    card.text.split(',').forEach(tokenStr => {
+                        const trimmed = tokenStr.trim();
+                        if (trimmed) {
+                            flatTokensRaw.push({
+                                cardId: card.id,
+                                raw: trimmed
+                            });
+                        }
                     });
                 });
 
+                // 3. 执行物理全局排重（保留最高权重算法）
                 const seenTokens = {}; 
                 const duplicatesLog = {}; 
 
-                allTokensRaw.forEach(tokStr => {
-                    const parsed = parsePromptTokenWeight(tokStr);
+                flatTokensRaw.forEach(tokenObj => {
+                    const parsed = parsePromptTokenWeight(tokenObj.raw);
                     if (!parsed.word) return;
 
-                    if (!seenTokens[parsed.word]) {
-                        seenTokens[parsed.word] = { weight: parsed.weight, original: parsed.original };
+                    const tokenKey = parsed.word;
+                    if (!seenTokens[tokenKey]) {
+                        seenTokens[tokenKey] = {
+                            weight: parsed.weight,
+                            original: parsed.original,
+                            cardId: tokenObj.cardId // 锁定该词属于哪一个卡片 ID
+                        };
                     } else {
-                        if (!duplicatesLog[parsed.word]) {
-                            duplicatesLog[parsed.word] = [{ original: seenTokens[parsed.word].original, weight: seenTokens[parsed.word].weight, isWinner: false }];
+                        // 发现重复词条，记录进排重对比库
+                        if (!duplicatesLog[tokenKey]) {
+                            duplicatesLog[tokenKey] = [
+                                { original: seenTokens[tokenKey].original, weight: seenTokens[tokenKey].weight, isWinner: false }
+                            ];
                         }
-                        duplicatesLog[parsed.word].push({ original: parsed.original, weight: parsed.weight, isWinner: false });
+                        duplicatesLog[tokenKey].push({
+                            original: parsed.original,
+                            weight: parsed.weight,
+                            isWinner: false
+                        });
 
-                        if (parsed.weight > seenTokens[parsed.word].weight) {
-                            seenTokens[parsed.word] = { weight: parsed.weight, original: parsed.original };
+                        // 如果新词条权重大于旧词条，覆盖并挪移其卡片归属权
+                        if (parsed.weight > seenTokens[tokenKey].weight) {
+                            seenTokens[tokenKey] = {
+                                weight: parsed.weight,
+                                original: parsed.original,
+                                cardId: tokenObj.cardId
+                            };
                         }
                     }
                 });
 
-                const finalTokensList = Object.values(seenTokens).map(item => item.original);
-                const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
-                const result = finalTokensList.join(joinSeparator);
+                // 4. 重构卡片与词条对应关系映射表
+                const cardTokenMap = {};
+                activeCards.forEach(card => {
+                    cardTokenMap[card.id] = [];
+                });
 
+                // 将保留下来的唯一词条分发回对应的卡片中
+                Object.values(seenTokens).forEach(tokenInfo => {
+                    if (cardTokenMap[tokenInfo.cardId]) {
+                        cardTokenMap[tokenInfo.cardId].push(tokenInfo.original);
+                    }
+                });
+
+                // 5. 按卡片物理顺序生成每一行的拼合字符串
+                const cardLines = [];
+                activeCards.forEach(card => {
+                    const tokens = cardTokenMap[card.id];
+                    if (tokens && tokens.length > 0) {
+                        // 卡片内部词条：使用标准的英文逗号加空格（, ）横向平滑拼合
+                        cardLines.push(tokens.join(', '));
+                    }
+                });
+
+                // 6. 进行终极卡片层级拼接
+                // 如果开启了空行排版：卡片与卡片之间采用 ",\n\n"（英文逗号 + 换行 + 换行）进行分隔
+                // 如果未开启：全部卡片采用 ", " 连贯排版
+                const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
+                const result = cardLines.join(joinSeparator);
+
+                // 7. 写入系统剪贴板并发送反馈弹窗
                 copyToClipboard(result).then(() => {
                     const typeText = isPositive ? '正向' : '反向';
-                    triggerToast(`复制${typeText}成功`, `已自动排重并保留最大权重项`);
+                    triggerToast(`复制${typeText}成功`, `已自动以卡片为单位拼合并排重`);
 
                     const conflictWordsList = Object.keys(duplicatesLog);
                     if (conflictWordsList.length > 0) {
@@ -1572,9 +1637,9 @@
 
             // 全生命周期初始化
             onMounted(async () => {
-                await loadSettings(); // 首先加载拉伸宽度和分隔符设置
-                await loadPresets();  // 加载本地常用组合 presets.json
-                await loadData();     // 加载清洗后的 prompts.json
+                await loadSettings(); 
+                await loadPresets();  
+                await loadData();     
             });
 
             return {
