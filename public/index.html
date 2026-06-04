@@ -354,7 +354,7 @@
                 <!-- Tab 1: 已勾选清单 -->
                 <div v-if="rightTab === 'selected'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div class="flex justify-between items-center pb-2 mb-2 shrink-0">
-                        <span class="text-[11px] text-slate-400">当前勾选项目：</span>
+                        <span class="text-[11px] text-slate-400">当前勾选项目：(点击定位提示词)</span>
                         <button v-if="selectedPrompts.length > 0" @click="clearAllSelected" class="text-xs text-rose-500 hover:text-rose-700 font-medium">
                             清空
                         </button>
@@ -366,10 +366,12 @@
                             <p class="text-xs">暂无勾选</p>
                         </div>
                         
+                        <!-- 【核心新增】：点击此处即可快速全屏精准定位提示词 -->
                         <div 
                             v-for="item in sortedSelectedPrompts" 
                             :key="item.id"
-                            class="flex justify-between items-start p-2.5 bg-slate-50 border border-slate-150 rounded-lg hover:border-indigo-200 transition-all group"
+                            @click="locatePrompt(item)"
+                            class="flex justify-between items-start p-2.5 bg-slate-50 border border-slate-150 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/30 cursor-pointer transition-all group"
                         >
                             <div class="flex-1 min-w-0 pr-2">
                                 <div class="flex items-center space-x-1.5">
@@ -379,7 +381,8 @@
                                     <span class="font-bold text-sm text-slate-700 truncate">{{ item.name }}</span>
                                 </div>
                             </div>
-                            <button @click="toggleSelect(item)" class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50">✕</button>
+                            <!-- 阻断冒泡，防止删除操作误触定位 -->
+                            <button @click.stop="toggleSelect(item)" class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50">✕</button>
                         </div>
                     </div>
 
@@ -428,7 +431,11 @@
                                         ➕ 追加
                                     </button>
                                 </div>
-                                <button @click.stop="triggerDeletePreset(preset)" class="text-xs text-slate-400 hover:text-rose-600 p-1">✕</button>
+                                <!-- 【新增设计】：重命名 ✏️ 按钮与删除 ✕ 按钮并排排布 -->
+                                <div class="flex items-center space-x-1">
+                                    <button @click.stop="openRenamePresetModal(preset)" class="text-xs text-slate-400 hover:text-indigo-600 p-1" title="重命名此常用组合">✏️</button>
+                                    <button @click.stop="triggerDeletePreset(preset)" class="text-xs text-slate-400 hover:text-rose-600 p-1">✕</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -628,19 +635,53 @@
         </div>
     </div>
 
-    <!-- 弹窗10：保存为常用预设 -->
-    <div v-if="showSavePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 class="text-lg font-bold mb-4 text-indigo-900">💾 保存为常用预设组合</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">当前已勾选 {{ selectedPrompts.length }} 个词，请输入预设名称：</label>
-                    <input v-model="newPresetName" type="text" ref="presetInput" placeholder="组合名称" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow" @keyup.enter="saveActiveAsPreset">
-                </div>
+    <!-- 弹窗10：【深度重构】保存为常用预设组合（追加模式选择） 💾 -->
+    <div v-if="showSavePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-indigo-100">
+            <h3 class="text-lg font-bold mb-4 text-indigo-950">💾 打包提示词组合</h3>
+            
+            <!-- 新建、覆盖切换选项 -->
+            <div class="flex space-x-6 mb-5 border-b pb-3">
+                <label class="flex items-center space-x-2 cursor-pointer select-none">
+                    <input type="radio" value="new" v-model="presetSaveMode" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
+                    <span class="text-xs font-bold text-slate-700">🆕 新建组合</span>
+                </label>
+                <label v-if="presets.length > 0" class="flex items-center space-x-2 cursor-pointer select-none">
+                    <input type="radio" value="overwrite" v-model="presetSaveMode" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
+                    <span class="text-xs font-bold text-slate-700">💾 覆盖旧常用组合</span>
+                </label>
             </div>
-            <div class="flex justify-end space-x-3 mt-6">
-                <button @click="showSavePresetModal = false" class="px-4 py-2 border rounded-lg text-sm text-slate-600 font-bold">取消</button>
-                <button @click="saveActiveAsPreset" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">确认保存</button>
+
+            <!-- 新建模式输入区 -->
+            <div v-if="presetSaveMode === 'new'" class="space-y-2 animate-fade-in">
+                <label class="block text-xs font-bold text-slate-500">当前已勾选 {{ selectedPrompts.length }} 个词，请输入预设名称：</label>
+                <input 
+                    v-model="newPresetName" 
+                    type="text" 
+                    ref="presetInput"
+                    placeholder="如：中式水墨、科幻霓虹底图" 
+                    class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
+                    @keyup.enter="saveActiveAsPreset"
+                >
+            </div>
+
+            <!-- 覆盖模式下拉框 -->
+            <div v-else class="space-y-2 animate-fade-in">
+                <label class="block text-xs font-bold text-slate-500">选择要覆盖的旧常用组合：</label>
+                <select 
+                    v-model="selectedPresetToOverwrite" 
+                    class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-xs focus:outline-indigo-500 bg-white shadow-sm"
+                >
+                    <option v-for="p in presets" :key="p.id" :value="p.id">
+                        {{ p.name }} (旧含 {{ p.promptIds.length }} 个词)
+                    </option>
+                </select>
+                <p class="text-[10px] text-rose-500 mt-1 font-bold">⚠️ 提示：确认覆盖后旧内容将被当前勾选项替换</p>
+            </div>
+
+            <div class="flex justify-end space-x-3 mt-6 border-t pt-4">
+                <button @click="showSavePresetModal = false" class="px-4 py-2 border rounded-lg text-xs text-slate-600 font-bold">取消</button>
+                <button @click="saveActiveAsPreset" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-bold shadow-md">确认保存</button>
             </div>
         </div>
     </div>
@@ -678,6 +719,32 @@
         </div>
     </div>
 
+    <!-- 弹窗13：【新增】常用组合重命名模态框 ✏️ -->
+    <div v-if="showRenamePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in border border-indigo-100">
+            <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1.5">
+                <span>✏️ 重命名常用组合</span>
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">将组合更名为：</label>
+                    <input 
+                        v-model="renamePresetName" 
+                        type="text" 
+                        ref="renamePresetInput"
+                        placeholder="新组合名称" 
+                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-indigo-500 input-focus-allow"
+                        @keyup.enter="saveRenamePreset"
+                    >
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6 border-t pt-4">
+                <button @click="showRenamePresetModal = false" class="px-4 py-2 border rounded-lg text-xs text-slate-600 font-bold">取消</button>
+                <button @click="saveRenamePreset" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 font-bold">保存修改</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -706,6 +773,16 @@
             const showSavePresetModal = ref(false);
             const newPresetName = ref('');
             const presetInput = ref(null);
+
+            // 组合保存模式：'new' (新建), 'overwrite' (覆盖已有)
+            const presetSaveMode = ref('new');
+            const selectedPresetToOverwrite = ref('');
+
+            // 组合重命名状态
+            const showRenamePresetModal = ref(false);
+            const presetToRename = ref(null);
+            const renamePresetName = ref('');
+            const renamePresetInput = ref(null);
 
             // 主从关联状态
             const selectedActiveId = ref(null);      
@@ -1071,6 +1148,22 @@
                 inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
             };
 
+            // 【核心新增】：右侧已选清单项目“点击定位物理提示词”高级定位逻辑
+            const locatePrompt = (item) => {
+                if (isInlineEditing.value && selectedActiveId.value !== item.id) {
+                    pendingSwitchItem.value = item;
+                    showSwitchConfirm.value = true;
+                    return;
+                }
+                // 清理可能产生的搜索屏蔽，直接切入核心数据物理源
+                searchQuery.value = '';
+                currentCategory.value = item.category;
+                selectedActiveId.value = item.id;
+                inlineEditForm.value = { ...item, _category: item.category };
+                isInlineEditing.value = false;
+                triggerToast('提示词已定位', `已为您展开分类【${item.category}】下的【${item.name}】`);
+            };
+
             const handleConfirmSwitch = () => {
                 if (pendingSwitchItem.value) {
                     const item = pendingSwitchItem.value;
@@ -1079,8 +1172,10 @@
                         currentCategory.value = item._categoryTarget;
                         selectedActiveId.value = null;
                     } else {
+                        searchQuery.value = '';
+                        currentCategory.value = item.category || item._category || currentCategory.value;
                         selectedActiveId.value = item.id;
-                        inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
+                        inlineEditForm.value = { ...item, _category: item.category || item._category };
                     }
                 }
                 isInlineEditing.value = false; 
@@ -1385,27 +1480,66 @@
                 return names.length > 0 ? names.join(', ') : '包含项已被删除';
             };
 
+            // 打开保存预设弹窗（重置参数并定位）
             const openSavePresetModal = () => {
                 newPresetName.value = '';
+                presetSaveMode.value = 'new';
+                selectedPresetToOverwrite.value = presets.value.length > 0 ? presets.value[0].id : '';
                 showSavePresetModal.value = true;
                 nextTick(() => { if (presetInput.value) presetInput.value.focus(); });
             };
 
-            // 保存预设
+            // 【核心重构】：支持“覆盖保存”和“新建保存”多态常用组合存储算法
             const saveActiveAsPreset = async () => {
-                const name = newPresetName.value.trim();
-                if (!name) return;
-                
                 const ids = selectedPrompts.value.map(p => p.id);
                 if (ids.length === 0) return;
 
-                const newPreset = { id: Date.now(), name: name, promptIds: ids };
-                presets.value.push(newPreset);
+                if (presetSaveMode.value === 'new') {
+                    // 新建模式
+                    const name = newPresetName.value.trim();
+                    if (!name) {
+                        alert('新建组合名称不能为空！');
+                        return;
+                    }
+                    const newPreset = { id: Date.now(), name: name, promptIds: ids };
+                    presets.value.push(newPreset);
+                    triggerToast('常用组合创建成功', `已新建组合: ${name}`);
+                } else {
+                    // 覆盖旧预设模式
+                    const targetId = selectedPresetToOverwrite.value;
+                    const found = presets.value.find(p => p.id === targetId);
+                    if (found) {
+                        found.promptIds = ids; // 用最新的覆盖原有的
+                        triggerToast('常用组合覆盖成功', `已更新组合【${found.name}】的内容`);
+                    }
+                }
                 
                 await savePresets(); 
                 showSavePresetModal.value = false;
                 rightTab.value = 'presets'; 
-                triggerToast('常用组合保存成功', `已写入本地硬盘: ${name}`);
+            };
+
+            // 【核心新增】：常用组合重命名机制
+            const openRenamePresetModal = (preset) => {
+                presetToRename.value = preset;
+                renamePresetName.value = preset.name;
+                showRenamePresetModal.value = true;
+                nextTick(() => { if (renamePresetInput.value) renamePresetInput.value.focus(); });
+            };
+
+            const saveRenamePreset = async () => {
+                const name = renamePresetName.value.trim();
+                if (!name || !presetToRename.value) return;
+
+                const found = presets.value.find(p => p.id === presetToRename.value.id);
+                if (found) {
+                    const oldName = found.name;
+                    found.name = name;
+                    await savePresets(); // 同步至本地 preset.json
+                    triggerToast('更名成功', `常用组合【${oldName}】已成功更名为【${name}】`);
+                }
+                showRenamePresetModal.value = false;
+                presetToRename.value = null;
             };
 
             const applyPreset = (preset, append = false) => {
@@ -1507,14 +1641,13 @@
                 return { word: str.toLowerCase(), weight: 1.0, original: phrase };
             };
 
-            // 【核心重构】：高容错提示词卡片级分组拼合与物理全局排重算法
+            // 高容错提示词卡片级分组拼合与物理全局排重算法
             const compileAndCopy = (isPositive = true) => {
                 if (sortedSelectedPrompts.value.length === 0) {
                     triggerToast('复制失败', '❌ 请先勾选提示词卡片！');
                     return;
                 }
 
-                // 1. 提取所有有实际有效英文词条的已选卡片结构
                 const activeCards = sortedSelectedPrompts.value.map(item => {
                     const rawText = isPositive ? item.positive : item.negative;
                     return {
@@ -1529,7 +1662,6 @@
                     return;
                 }
 
-                // 2. 物理摊平所有英文单词词条，并标记它们属于哪个卡片 ID
                 const flatTokensRaw = [];
                 activeCards.forEach(card => {
                     card.text.split(',').forEach(tokenStr => {
@@ -1543,7 +1675,6 @@
                     });
                 });
 
-                // 3. 执行物理全局排重（保留最高权重算法）
                 const seenTokens = {}; 
                 const duplicatesLog = {}; 
 
@@ -1556,10 +1687,9 @@
                         seenTokens[tokenKey] = {
                             weight: parsed.weight,
                             original: parsed.original,
-                            cardId: tokenObj.cardId // 锁定该词属于哪一个卡片 ID
+                            cardId: tokenObj.cardId 
                         };
                     } else {
-                        // 发现重复词条，记录进排重对比库
                         if (!duplicatesLog[tokenKey]) {
                             duplicatesLog[tokenKey] = [
                                 { original: seenTokens[tokenKey].original, weight: seenTokens[tokenKey].weight, isWinner: false }
@@ -1571,7 +1701,6 @@
                             isWinner: false
                         });
 
-                        // 如果新词条权重大于旧词条，覆盖并挪移其卡片归属权
                         if (parsed.weight > seenTokens[tokenKey].weight) {
                             seenTokens[tokenKey] = {
                                 weight: parsed.weight,
@@ -1582,36 +1711,28 @@
                     }
                 });
 
-                // 4. 重构卡片与词条对应关系映射表
                 const cardTokenMap = {};
                 activeCards.forEach(card => {
                     cardTokenMap[card.id] = [];
                 });
 
-                // 将保留下来的唯一词条分发回对应的卡片中
                 Object.values(seenTokens).forEach(tokenInfo => {
                     if (cardTokenMap[tokenInfo.cardId]) {
                         cardTokenMap[tokenInfo.cardId].push(tokenInfo.original);
                     }
                 });
 
-                // 5. 按卡片物理顺序生成每一行的拼合字符串
                 const cardLines = [];
                 activeCards.forEach(card => {
                     const tokens = cardTokenMap[card.id];
                     if (tokens && tokens.length > 0) {
-                        // 卡片内部词条：使用标准的英文逗号加空格（, ）横向平滑拼合
                         cardLines.push(tokens.join(', '));
                     }
                 });
 
-                // 6. 进行终极卡片层级拼接
-                // 如果开启了空行排版：卡片与卡片之间采用 ",\n\n"（英文逗号 + 换行 + 换行）进行分隔
-                // 如果未开启：全部卡片采用 ", " 连贯排版
                 const joinSeparator = useDoubleNewline.value ? ',\n\n' : ', ';
                 const result = cardLines.join(joinSeparator);
 
-                // 7. 写入系统剪贴板并发送反馈弹窗
                 copyToClipboard(result).then(() => {
                     const typeText = isPositive ? '正向' : '反向';
                     triggerToast(`复制${typeText}成功`, `已自动以卡片为单位拼合并排重`);
@@ -1657,6 +1778,12 @@
                 showSavePresetModal,
                 newPresetName,
                 presetInput,
+                presetSaveMode,
+                selectedPresetToOverwrite,
+                showRenamePresetModal,
+                presetToRename,
+                renamePresetName,
+                renamePresetInput,
                 selectedActiveId,
                 isInlineEditing,
                 inlineEditForm,
@@ -1692,6 +1819,7 @@
                 displayedPrompts,
                 initResize,
                 inspectPrompt,
+                locatePrompt,
                 handleConfirmSwitch,
                 cancelSwitch,
                 selectCategory,
@@ -1724,6 +1852,8 @@
                 getPresetNamesPreview,
                 openSavePresetModal,
                 saveActiveAsPreset,
+                openRenamePresetModal,
+                saveRenamePreset,
                 applyPreset,
                 triggerDeletePreset,
                 executeDeletePreset
