@@ -167,7 +167,7 @@
             <!-- 主工作台 -->
             <div class="flex-1 flex overflow-hidden">
                 
-                <!-- 【板块 2】：提示词小卡片列表 -->
+                <!-- 【板块 2】：提示词小卡片列表（性能优化：过渡仅作用于颜色与边框） -->
                 <div 
                     :style="{ width: widthList + 'px' }" 
                     class="flex flex-col space-y-2.5 overflow-y-auto pr-1 scrollbar-thin h-full shrink-0"
@@ -176,10 +176,10 @@
                         v-for="item in displayedPrompts" 
                         :key="item.id"
                         @click="inspectPrompt(item)"
-                        :class="['border rounded-xl p-3.5 transition-all flex items-center justify-between relative group cursor-pointer shrink-0', 
+                        :class="['border rounded-xl p-3.5 transition-colors duration-150 flex items-center justify-between relative group cursor-pointer shrink-0', 
                                  selectedActiveId === item.id 
                                  ? 'border-indigo-500 bg-indigo-50/60 shadow-sm ring-1 ring-indigo-500' 
-                                 : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm']"
+                                 : 'border-slate-200 bg-white hover:border-slate-350 hover:shadow-sm']"
                     >
                         <div class="flex items-center space-x-3 min-w-0 pr-6 w-full">
                             <!-- 勾选框 -->
@@ -366,7 +366,7 @@
                             <p class="text-xs">暂无勾选</p>
                         </div>
                         
-                        <!-- 【核心新增】：点击此处即可快速全屏精准定位提示词 -->
+                        <!-- 点击定位 -->
                         <div 
                             v-for="item in sortedSelectedPrompts" 
                             :key="item.id"
@@ -381,7 +381,6 @@
                                     <span class="font-bold text-sm text-slate-700 truncate">{{ item.name }}</span>
                                 </div>
                             </div>
-                            <!-- 阻断冒泡，防止删除操作误触定位 -->
                             <button @click.stop="toggleSelect(item)" class="text-slate-400 hover:text-rose-500 p-1 rounded-md hover:bg-rose-50">✕</button>
                         </div>
                     </div>
@@ -394,19 +393,38 @@
                 </div>
 
                 <!-- Tab 2: 常用预设 -->
-                <div v-if="rightTab === 'presets'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div class="text-[11px] text-slate-400 pb-2 mb-2 shrink-0">经典搭配列表：</div>
+                <div v-if="rightTab === 'presets'" class="flex-1 flex flex-col min-h-0 overflow-hidden bg-white">
+                    <div class="text-[11px] text-slate-400 pb-2 mb-1 shrink-0">经典搭配列表：</div>
                     
+                    <!-- 常用组合专属搜索框 -->
+                    <div class="relative mb-3 shrink-0">
+                        <span class="absolute inset-y-0 left-2.5 flex items-center text-slate-400 text-xs">🔍</span>
+                        <input 
+                            v-model="presetSearchQuery" 
+                            type="text" 
+                            placeholder="搜索组合名称或包含的提示词..." 
+                            class="w-full border border-slate-200 rounded-md pl-7 pr-7 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50 transition-all input-focus-allow"
+                        >
+                        <button 
+                            v-if="presetSearchQuery" 
+                            @click="presetSearchQuery = ''" 
+                            class="absolute inset-y-0 right-2.5 flex items-center text-slate-400 hover:text-slate-600 text-xs"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <!-- 预设卡片列表 -->
                     <div class="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
-                        <div v-if="presets.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
+                        <div v-if="filteredPresets.length === 0" class="h-full flex flex-col items-center justify-center text-slate-300 space-y-2">
                             <span class="text-3xl">💾</span>
-                            <p class="text-xs">暂无常用组合</p>
+                            <p class="text-xs">暂无匹配的常用组合</p>
                         </div>
 
                         <div 
-                            v-for="preset in presets" 
+                            v-for="preset in filteredPresets" 
                             :key="preset.id"
-                            class="p-3 bg-amber-50/40 hover:bg-amber-50/80 border border-amber-200/70 rounded-xl transition-all relative flex flex-col justify-between h-28"
+                            class="p-3 bg-amber-50/40 hover:bg-amber-50/80 border border-amber-200/70 rounded-xl transition-colors duration-150 relative flex flex-col justify-between h-28 shrink-0"
                         >
                             <div>
                                 <div class="flex justify-between items-start">
@@ -417,12 +435,12 @@
                                         {{ preset.promptIds.length }} 个词
                                     </span>
                                 </div>
-                                <p class="text-[10px] text-slate-400 truncate mt-1" :title="getPresetNamesPreview(preset)">
+                                <p class="text-[10px] text-slate-400 truncate mt-1 animate-fade-in" :title="getPresetNamesPreview(preset)">
                                     包含: {{ getPresetNamesPreview(preset) }}
                                 </p>
                             </div>
 
-                            <div class="flex justify-between items-center pt-2 mt-2 border-t border-amber-200/50">
+                            <div class="flex justify-between items-center pt-2 mt-2 border-t border-amber-200/50 shrink-0">
                                 <div class="flex space-x-2">
                                     <button @click="applyPreset(preset, false)" class="text-[11px] bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded">
                                         ⚡ 应用
@@ -431,9 +449,8 @@
                                         ➕ 追加
                                     </button>
                                 </div>
-                                <!-- 【新增设计】：重命名 ✏️ 按钮与删除 ✕ 按钮并排排布 -->
                                 <div class="flex items-center space-x-1">
-                                    <button @click.stop="openRenamePresetModal(preset)" class="text-xs text-slate-400 hover:text-indigo-600 p-1" title="重命名此常用组合">✏️</button>
+                                    <button @click.stop="openRenamePresetModal(preset)" class="text-xs text-slate-400 hover:text-indigo-600 p-1" title="重命名组合">✏️</button>
                                     <button @click.stop="triggerDeletePreset(preset)" class="text-xs text-slate-400 hover:text-rose-600 p-1">✕</button>
                                 </div>
                             </div>
@@ -635,10 +652,10 @@
         </div>
     </div>
 
-    <!-- 弹窗10：【深度重构】保存为常用预设组合（追加模式选择） 💾 -->
+    <!-- 弹窗10：保存为常用预设组合 💾 -->
     <div v-if="showSavePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
         <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl border border-indigo-100">
-            <h3 class="text-lg font-bold mb-4 text-indigo-950">💾 打包提示词组合</h3>
+            <h3 class="text-lg font-bold mb-4 text-indigo-955">💾 打包提示词组合</h3>
             
             <!-- 新建、覆盖切换选项 -->
             <div class="flex space-x-6 mb-5 border-b pb-3">
@@ -719,7 +736,7 @@
         </div>
     </div>
 
-    <!-- 弹窗13：【新增】常用组合重命名模态框 ✏️ -->
+    <!-- 弹窗13：常用组合重命名模态框 ✏️ -->
     <div v-if="showRenamePresetModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in border border-indigo-100">
             <h3 class="text-lg font-bold mb-4 text-indigo-900 flex items-center space-x-1.5">
@@ -767,9 +784,10 @@
             // 空行拼合配置状态
             const useDoubleNewline = ref(false);
 
-            // 常用组合数据
+            // 常用组合数据与搜索功能
             const rightTab = ref('selected'); 
             const presets = ref([]);
+            const presetSearchQuery = ref(''); // 常用组合搜索绑定
             const showSavePresetModal = ref(false);
             const newPresetName = ref('');
             const presetInput = ref(null);
@@ -977,6 +995,24 @@
                 });
             });
 
+            // 常用组合高精度模糊搜索计算器
+            const filteredPresets = computed(() => {
+                const query = presetSearchQuery.value.trim().toLowerCase();
+                if (!query) return presets.value;
+                return presets.value.filter(preset => {
+                    // 1. 匹配常用组合名字
+                    if (preset.name.toLowerCase().includes(query)) return true;
+                    // 2. 匹配其内部包含的各个提示词中文/英文名称
+                    return preset.promptIds.some(id => {
+                        const p = findPromptById(id);
+                        return p && (
+                            p.name.toLowerCase().includes(query) || 
+                            (p.positive && p.positive.toLowerCase().includes(query))
+                        );
+                    });
+                });
+            });
+
             // 智能解析批量文本
             const parseBulkText = (text) => {
                 if (!text.trim()) return [];
@@ -1148,14 +1184,14 @@
                 inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
             };
 
-            // 【核心新增】：右侧已选清单项目“点击定位物理提示词”高级定位逻辑
+            // 右侧已选清单项目“点击定位物理提示词”高级定位逻辑
             const locatePrompt = (item) => {
                 if (isInlineEditing.value && selectedActiveId.value !== item.id) {
                     pendingSwitchItem.value = item;
                     showSwitchConfirm.value = true;
                     return;
                 }
-                // 清理可能产生的搜索屏蔽，直接切入核心数据物理源
+                // 精确定位某一个词条时，由于是跨分类定位，此时强制临时清空搜索条件，防止定位的对象因不匹配搜索条件而被隐藏
                 searchQuery.value = '';
                 currentCategory.value = item.category;
                 selectedActiveId.value = item.id;
@@ -1164,15 +1200,14 @@
                 triggerToast('提示词已定位', `已为您展开分类【${item.category}】下的【${item.name}】`);
             };
 
+            // 切换确认
             const handleConfirmSwitch = () => {
                 if (pendingSwitchItem.value) {
                     const item = pendingSwitchItem.value;
                     if (item.id === null && item._categoryTarget) {
-                        searchQuery.value = '';
                         currentCategory.value = item._categoryTarget;
                         selectedActiveId.value = null;
                     } else {
-                        searchQuery.value = '';
                         currentCategory.value = item.category || item._category || currentCategory.value;
                         selectedActiveId.value = item.id;
                         inlineEditForm.value = { ...item, _category: item.category || item._category };
@@ -1188,13 +1223,14 @@
                 pendingSwitchItem.value = null;
             };
 
+            // 【保留搜索词功能修复】：点击左侧切换其他分类时，保留输入的搜索框内容
             const selectCategory = (categoryName) => {
                 if (isInlineEditing.value) {
                     pendingSwitchItem.value = { id: null, _categoryTarget: categoryName }; 
                     showSwitchConfirm.value = true;
                     return;
                 }
-                searchQuery.value = '';
+                // searchQuery.value = ''; // 🌟已彻底移除此处的清空代码，实现分类切换时保留搜索关键词
                 currentCategory.value = categoryName;
                 selectedActiveId.value = null; 
                 isInlineEditing.value = false;
@@ -1216,7 +1252,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dbData.value)
                 });
-                await loadData();
+                // ⚡ 已去除 loadData() 调用，不重新读盘加载，大幅提升操作流畅度
             };
 
             // 新增分类
@@ -1489,7 +1525,7 @@
                 nextTick(() => { if (presetInput.value) presetInput.value.focus(); });
             };
 
-            // 【核心重构】：支持“覆盖保存”和“新建保存”多态常用组合存储算法
+            // 支持“覆盖保存”和“新建保存”多态常用组合存储算法
             const saveActiveAsPreset = async () => {
                 const ids = selectedPrompts.value.map(p => p.id);
                 if (ids.length === 0) return;
@@ -1509,17 +1545,18 @@
                     const targetId = selectedPresetToOverwrite.value;
                     const found = presets.value.find(p => p.id === targetId);
                     if (found) {
-                        found.promptIds = ids; // 用最新的覆盖原有的
+                        found.promptIds = ids; 
                         triggerToast('常用组合覆盖成功', `已更新组合【${found.name}】的内容`);
                     }
                 }
                 
                 await savePresets(); 
                 showSavePresetModal.value = false;
-                rightTab.value = 'presets'; 
+                // 🌟已彻底修复：注释掉这行，不再自作主张切换至“presets”，保留在“selected”已选清单视图！
+                // rightTab.value = 'presets'; 
             };
 
-            // 【核心新增】：常用组合重命名机制
+            // 常用组合重命名机制
             const openRenamePresetModal = (preset) => {
                 presetToRename.value = preset;
                 renamePresetName.value = preset.name;
@@ -1535,8 +1572,8 @@
                 if (found) {
                     const oldName = found.name;
                     found.name = name;
-                    await savePresets(); // 同步至本地 preset.json
-                    triggerToast('更名成功', `常用组合【${oldName}】已成功更名为【${name}】`);
+                    await savePresets(); 
+                    triggerToast('更名成功', `常用组合【${oldName}】已更名为【${name}】`);
                 }
                 showRenamePresetModal.value = false;
                 presetToRename.value = null;
@@ -1775,6 +1812,8 @@
                 useDoubleNewline,
                 rightTab,
                 presets,
+                presetSearchQuery,
+                filteredPresets,
                 showSavePresetModal,
                 newPresetName,
                 presetInput,
