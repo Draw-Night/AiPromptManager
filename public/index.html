@@ -167,7 +167,7 @@
             <!-- 主工作台 -->
             <div class="flex-1 flex overflow-hidden">
                 
-                <!-- 【板块 2】：提示词小卡片列表（性能优化：过渡仅作用于颜色与边框） -->
+                <!-- 【板块 2】：提示词小卡片列表 -->
                 <div 
                     :style="{ width: widthList + 'px' }" 
                     class="flex flex-col space-y-2.5 overflow-y-auto pr-1 scrollbar-thin h-full shrink-0"
@@ -264,7 +264,7 @@
                             <div class="shrink-0">
                                 <button 
                                     v-if="!isInlineEditing" 
-                                    @click="isInlineEditing = true" 
+                                    @click="startEditing" 
                                     class="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-medium transition-all"
                                 >
                                     ✍ 编辑提示词
@@ -287,6 +287,23 @@
                         </div>
 
                         <div class="flex-1 flex flex-col space-y-3 overflow-hidden">
+                            
+                            <!-- 【新增】转移分类功能：仅在编辑模式下优雅展示 -->
+                            <div v-if="isInlineEditing" class="flex items-center space-x-2 pb-2 border-b border-dashed border-slate-100 mb-2 shrink-0 animate-fade-in">
+                                <span class="text-xs font-bold text-slate-500 flex items-center space-x-1">
+                                    <span>📁</span>
+                                    <span>移动分类至:</span>
+                                </span>
+                                <select 
+                                    v-model="inlineEditForm._categoryTarget" 
+                                    class="border border-slate-200 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white shadow-sm cursor-pointer"
+                                >
+                                    <option v-for="cat in dbData" :key="cat.category" :value="cat.category">
+                                        {{ cat.category }}
+                                    </option>
+                                </select>
+                            </div>
+
                             <div class="flex-[2] flex flex-col min-h-0">
                                 <label class="text-xs font-bold text-emerald-700 mb-1">🟢 正向提示词 (Positive)</label>
                                 <div v-if="!isInlineEditing" class="flex-1 overflow-y-auto bg-emerald-50/30 text-slate-700 p-3 rounded-lg border border-emerald-100 text-sm whitespace-pre-wrap break-all select-text scrollbar-thin">
@@ -787,7 +804,7 @@
             // 常用组合数据与搜索功能
             const rightTab = ref('selected'); 
             const presets = ref([]);
-            const presetSearchQuery = ref(''); // 常用组合搜索绑定
+            const presetSearchQuery = ref(''); 
             const showSavePresetModal = ref(false);
             const newPresetName = ref('');
             const presetInput = ref(null);
@@ -805,7 +822,7 @@
             // 主从关联状态
             const selectedActiveId = ref(null);      
             const isInlineEditing = ref(false);       
-            const inlineEditForm = ref({ id: '', name: '', positive: '', negative: '', desc: '', starred: false, _category: '' }); 
+            const inlineEditForm = ref({ id: '', name: '', positive: '', negative: '', desc: '', starred: false, _category: '', _categoryTarget: '' }); 
 
             // Toast 状态
             const toast = ref({ show: false, title: '', message: '' });
@@ -1000,9 +1017,7 @@
                 const query = presetSearchQuery.value.trim().toLowerCase();
                 if (!query) return presets.value;
                 return presets.value.filter(preset => {
-                    // 1. 匹配常用组合名字
                     if (preset.name.toLowerCase().includes(query)) return true;
-                    // 2. 匹配其内部包含的各个提示词中文/英文名称
                     return preset.promptIds.some(id => {
                         const p = findPromptById(id);
                         return p && (
@@ -1149,7 +1164,7 @@
                 await updateBackend();
 
                 selectedActiveId.value = list[0].id;
-                inlineEditForm.value = { ...list[0], _category: currentCategory.value };
+                inlineEditForm.value = { ...list[0], _category: currentCategory.value, _categoryTarget: currentCategory.value };
                 isInlineEditing.value = false;
 
                 triggerToast('导入成功', `已导入 ${list.length} 个提示词至 ${currentCategory.value}`);
@@ -1181,7 +1196,11 @@
                 
                 selectedActiveId.value = item.id;
                 isInlineEditing.value = false;
-                inlineEditForm.value = { ...item, _category: item._category || currentCategory.value };
+                inlineEditForm.value = { 
+                    ...item, 
+                    _category: item._category || currentCategory.value,
+                    _categoryTarget: item._category || currentCategory.value 
+                };
             };
 
             // 右侧已选清单项目“点击定位物理提示词”高级定位逻辑
@@ -1191,11 +1210,14 @@
                     showSwitchConfirm.value = true;
                     return;
                 }
-                // 精确定位某一个词条时，由于是跨分类定位，此时强制临时清空搜索条件，防止定位的对象因不匹配搜索条件而被隐藏
                 searchQuery.value = '';
                 currentCategory.value = item.category;
                 selectedActiveId.value = item.id;
-                inlineEditForm.value = { ...item, _category: item.category };
+                inlineEditForm.value = { 
+                    ...item, 
+                    _category: item.category,
+                    _categoryTarget: item.category 
+                };
                 isInlineEditing.value = false;
                 triggerToast('提示词已定位', `已为您展开分类【${item.category}】下的【${item.name}】`);
             };
@@ -1210,7 +1232,11 @@
                     } else {
                         currentCategory.value = item.category || item._category || currentCategory.value;
                         selectedActiveId.value = item.id;
-                        inlineEditForm.value = { ...item, _category: item.category || item._category };
+                        inlineEditForm.value = { 
+                            ...item, 
+                            _category: item.category || item._category,
+                            _categoryTarget: item.category || item._category
+                        };
                     }
                 }
                 isInlineEditing.value = false; 
@@ -1223,14 +1249,13 @@
                 pendingSwitchItem.value = null;
             };
 
-            // 【保留搜索词功能修复】：点击左侧切换其他分类时，保留输入的搜索框内容
+            // 点击左侧切换其他分类时，保留输入的搜索框内容
             const selectCategory = (categoryName) => {
                 if (isInlineEditing.value) {
                     pendingSwitchItem.value = { id: null, _categoryTarget: categoryName }; 
                     showSwitchConfirm.value = true;
                     return;
                 }
-                // searchQuery.value = ''; // 🌟已彻底移除此处的清空代码，实现分类切换时保留搜索关键词
                 currentCategory.value = categoryName;
                 selectedActiveId.value = null; 
                 isInlineEditing.value = false;
@@ -1252,7 +1277,6 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dbData.value)
                 });
-                // ⚡ 已去除 loadData() 调用，不重新读盘加载，大幅提升操作流畅度
             };
 
             // 新增分类
@@ -1386,44 +1410,85 @@
                 await updateBackend();
                 
                 selectedActiveId.value = newId;
-                inlineEditForm.value = { ...newObj, _category: currentCategory.value };
+                inlineEditForm.value = { ...newObj, _category: currentCategory.value, _categoryTarget: currentCategory.value };
                 isInlineEditing.value = false;
             };
 
-            // 内联编辑
+            // 【重构设计】：进入编辑模式，初始化目标分类
+            const startEditing = () => {
+                inlineEditForm.value._categoryTarget = inlineEditForm.value._category || currentCategory.value;
+                isInlineEditing.value = true;
+            };
+
+            // 【重构设计】：内联编辑保存（优雅支持跨分类无跳转物理转移）
             const saveInlineEdit = async () => {
                 if (!inlineEditForm.value.name.trim()) return;
 
-                const targetCat = dbData.value.find(item => item.category === inlineEditForm.value._category);
-                if (!targetCat) return;
+                const sourceCatName = inlineEditForm.value._category;
+                const targetCatName = inlineEditForm.value._categoryTarget || sourceCatName;
 
-                const idx = targetCat.prompts.findIndex(p => p.id === inlineEditForm.value.id);
-                if (idx !== -1) {
-                    targetCat.prompts[idx].name = inlineEditForm.value.name;
-                    inlineEditForm.value.positive = sanitizePrompts(inlineEditForm.value.positive);
-                    inlineEditForm.value.negative = sanitizePrompts(inlineEditForm.value.negative);
+                const sourceCat = dbData.value.find(item => item.category === sourceCatName);
+                const targetCat = dbData.value.find(item => item.category === targetCatName);
 
-                    targetCat.prompts[idx].positive = inlineEditForm.value.positive;
-                    targetCat.prompts[idx].negative = inlineEditForm.value.negative;
-                    targetCat.prompts[idx].desc = inlineEditForm.value.desc; 
-                    targetCat.prompts[idx].starred = inlineEditForm.value.starred; 
+                if (!sourceCat || !targetCat) return;
+
+                // 清洗输入词条
+                inlineEditForm.value.positive = sanitizePrompts(inlineEditForm.value.positive);
+                inlineEditForm.value.negative = sanitizePrompts(inlineEditForm.value.negative);
+
+                const promptId = inlineEditForm.value.id;
+
+                if (sourceCatName === targetCatName) {
+                    // 情况 A：没有移动分类，仅原地更新内容
+                    const idx = sourceCat.prompts.findIndex(p => p.id === promptId);
+                    if (idx !== -1) {
+                        sourceCat.prompts[idx].name = inlineEditForm.value.name;
+                        sourceCat.prompts[idx].positive = inlineEditForm.value.positive;
+                        sourceCat.prompts[idx].negative = inlineEditForm.value.negative;
+                        sourceCat.prompts[idx].desc = inlineEditForm.value.desc; 
+                        sourceCat.prompts[idx].starred = inlineEditForm.value.starred; 
+                    }
                 } else {
-                    return;
+                    // 情况 B：转移分类！执行无跳转静默转移
+                    const idx = sourceCat.prompts.findIndex(p => p.id === promptId);
+                    if (idx !== -1) {
+                        // 1. 从原分类移除
+                        const [movedPrompt] = sourceCat.prompts.splice(idx, 1);
+                        
+                        // 2. 赋予新内容属性
+                        movedPrompt.name = inlineEditForm.value.name;
+                        movedPrompt.positive = inlineEditForm.value.positive;
+                        movedPrompt.negative = inlineEditForm.value.negative;
+                        movedPrompt.desc = inlineEditForm.value.desc;
+                        movedPrompt.starred = inlineEditForm.value.starred;
+
+                        // 3. 塞入目标新分类
+                        targetCat.prompts.push(movedPrompt);
+
+                        // 4. 原分类数据已流出，清空中间选中高亮以防残留报错
+                        selectedActiveId.value = null;
+                    }
                 }
 
-                // 同步更新已选列表
-                const sIdx = selectedPrompts.value.findIndex(p => p.id === inlineEditForm.value.id);
+                // 5. 同步更新“右侧已选清单”中的分类缓存，保证拼合功能绝对不崩
+                const sIdx = selectedPrompts.value.findIndex(p => p.id === promptId);
                 if (sIdx !== -1) {
                     selectedPrompts.value[sIdx].name = inlineEditForm.value.name;
                     selectedPrompts.value[sIdx].positive = inlineEditForm.value.positive;
                     selectedPrompts.value[sIdx].negative = inlineEditForm.value.negative;
                     selectedPrompts.value[sIdx].desc = inlineEditForm.value.desc;
                     selectedPrompts.value[sIdx].starred = inlineEditForm.value.starred;
+                    selectedPrompts.value[sIdx].category = targetCatName; // 改变缓存中的分类归属
                 }
 
                 isInlineEditing.value = false;
                 await updateBackend();
-                triggerToast('保存成功', `已清洗符号并保存: ${inlineEditForm.value.name}`);
+
+                if (sourceCatName === targetCatName) {
+                    triggerToast('保存成功', `已更新: ${inlineEditForm.value.name}`);
+                } else {
+                    triggerToast('移动成功', `🚀 已成功将【${inlineEditForm.value.name}】移至分类【${targetCatName}】`);
+                }
             };
 
             const cancelInlineEdit = () => {
@@ -1431,7 +1496,11 @@
                 if (originalCat) {
                     const original = originalCat.prompts.find(p => p.id === selectedActiveId.value);
                     if (original) {
-                        inlineEditForm.value = { ...original, _category: originalCat.category };
+                        inlineEditForm.value = { 
+                            ...original, 
+                            _category: originalCat.category,
+                            _categoryTarget: originalCat.category 
+                        };
                     }
                 }
                 isInlineEditing.value = false;
@@ -1552,8 +1621,6 @@
                 
                 await savePresets(); 
                 showSavePresetModal.value = false;
-                // 🌟已彻底修复：注释掉这行，不再自作主张切换至“presets”，保留在“selected”已选清单视图！
-                // rightTab.value = 'presets'; 
             };
 
             // 常用组合重命名机制
@@ -1873,6 +1940,7 @@
                 handleDragEnd,
                 openAddPromptModal,
                 saveNewPrompt,
+                startEditing,
                 saveInlineEdit,
                 cancelInlineEdit,
                 triggerDeletePrompt,
